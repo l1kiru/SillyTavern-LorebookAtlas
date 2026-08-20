@@ -156,6 +156,12 @@ test('World Info entry thumbs stay inside the collapsed header row', () => {
     assert.match(css, /--lba-collapsed-title-max:/);
 });
 
+test('the explorer fills the ST popup instead of forcing a 960px width', () => {
+    assert.doesNotMatch(css, /\.lba-explorer[^{]*\{[^}]*min-width:\s*min\(960px/);
+    assert.match(css, /\.lba-explorer[^{]*\{[^}]*min-width:\s*0/);
+    assert.match(css, /grid-template-rows:\s*minmax\(8rem,\s*30%\)/);
+});
+
 test('layout preset falls back to normal and writes the clamp variables', () => {
     assert.equal(normalizeLayoutPreset('nope'), 'normal');
     const written = {};
