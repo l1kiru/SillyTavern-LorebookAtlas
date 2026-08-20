@@ -319,14 +319,10 @@
     background: var(--lba-panel);
 }
 
-#world_popup:has(> .lba-crop) {
-    position: relative;
-}
-
 .lba-crop {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    z-index: 20;
+    z-index: 10050;
     display: flex;
     flex-direction: column;
     align-items: center;
