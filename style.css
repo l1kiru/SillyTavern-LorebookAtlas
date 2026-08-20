@@ -431,6 +431,8 @@
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls {
+        --lba-collapsed-title-min: calc(1.25em + 6px);
+        --lba-collapsed-title-max: calc(2.5em + 6px);
         display: grid;
         grid-template-columns: auto auto auto minmax(0, 1fr);
         align-items: stretch;
@@ -456,11 +458,22 @@
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .menu_button.lba-entry-button {
+        position: relative;
         height: 100%;
         width: auto;
-        min-width: unset;
-        min-height: unset;
+        min-width: var(--lba-collapsed-title-min);
+        min-height: var(--lba-collapsed-title-min);
+        max-width: var(--lba-collapsed-title-max);
+        max-height: var(--lba-collapsed-title-max);
         aspect-ratio: 1;
+        overflow: hidden;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .lba-entry-thumb {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .flex-container.alignitemscenter.wide100p {
@@ -487,8 +500,8 @@
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) textarea[name="comment"] {
         field-sizing: content;
         height: auto;
-        min-height: calc(1.25em + 6px);
-        max-height: calc(2.5em + 6px);
+        min-height: var(--lba-collapsed-title-min);
+        max-height: var(--lba-collapsed-title-max);
         resize: none;
         overflow: hidden;
         line-height: 1.25;

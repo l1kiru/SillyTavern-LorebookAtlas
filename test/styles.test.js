@@ -153,6 +153,7 @@ test('World Info entry thumbs stay inside the collapsed header row', () => {
     assert.match(css, /@media\s*\(max-width:\s*700px\)/);
     assert.match(css, /WIEnteryHeaderControls/);
     assert.match(css, /field-sizing:\s*content/);
+    assert.match(css, /--lba-collapsed-title-max:/);
 });
 
 test('layout preset falls back to normal and writes the clamp variables', () => {
