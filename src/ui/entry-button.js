@@ -35,6 +35,11 @@ function closeLayer(className) {
     }
 }
 
+/** World Info's popup uses backdrop-filter, which on mobile paints above body-level fixed layers. */
+function cropHost() {
+    return document.getElementById('world_popup') || document.body;
+}
+
 function slider(label, min, max, step, value) {
     const output = el('output', { text: String(value) });
     const input = el('input', {
@@ -133,7 +138,7 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         overlay.addEventListener('pointerdown', event => {
             if (event.target === overlay) closeLayer(CROP_CLASS);
         });
-        document.body.append(overlay);
+        cropHost().append(overlay);
     }
 
     function openThumbMenu(anchor, uid, image) {
