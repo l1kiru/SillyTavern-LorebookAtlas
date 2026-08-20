@@ -60,7 +60,7 @@ export function entryPasses({ selected, membership = [], lists = {}, image = nul
     return membership.some(id => wanted.has(id));
 }
 
-export function createWiFilter({ wi, io }) {
+export function createWiFilter({ wi, io, onExplore }) {
     let selected = ALL;
     let lists = {};
     let bar = null;
@@ -247,11 +247,20 @@ export function createWiFilter({ wi, io }) {
             },
         }, [el('i', { class: 'fa-fw fa-solid fa-filter-circle-xmark' })]);
 
+        const explore = onExplore
+            ? el('div', {
+                class: 'menu_button lba-button--icon',
+                title: T('list.explorer'),
+                on: { click: () => onExplore() },
+            }, [el('i', { class: 'fa-fw fa-solid fa-list-ul' })])
+            : null;
+
         const node = el('div', { class: BAR_CLASS }, [
             el('span', { class: 'lba-filter-bar__label', text: T('filter.label') }),
             select,
             el('span', { class: 'lba-filter-bar__count', text: '' }),
             reset,
+            explore,
             el('span', { class: 'lba-filter-bar__warning lba-hidden' }),
         ]);
 

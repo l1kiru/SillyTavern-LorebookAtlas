@@ -1,5 +1,5 @@
 /**
- * Injects the image and list controls into every World Info entry.
+ * Injects the image control into every World Info entry.
  *
  * The entry list is rebuilt wholesale on almost every interaction — filtering, sorting,
  * paging — so a one-shot pass is not enough; a MutationObserver re-applies the controls
@@ -19,7 +19,7 @@ import { createWiAdapter, bindInteractionBoundary } from './wi-adapter.js';
 
 const CHROME_CLASS = 'lba-entry-chrome';
 
-export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAfterScan }) {
+export function createEntryButtons({ storage, onAttach, onOpen, onAfterScan }) {
     const wi = createWiAdapter();
     let observer = null;
     let bootstrap = null;
@@ -51,19 +51,7 @@ export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAft
                 : icon('fa-solid fa-image'),
         ]);
 
-        const listButton = el('div', {
-            class: 'menu_button lba-button--icon lba-entry-lists',
-            title: T('list.explorer'),
-            on: {
-                click: event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onExplore?.(uid);
-                },
-            },
-        }, [icon('fa-solid fa-list-ul')]);
-
-        const chrome = el('span', { class: CHROME_CLASS, title: T('settings.title') }, [imageButton, listButton]);
+        const chrome = el('span', { class: CHROME_CLASS, title: T('settings.title') }, [imageButton]);
         bindInteractionBoundary(chrome);
         void entryNode;
         return chrome;

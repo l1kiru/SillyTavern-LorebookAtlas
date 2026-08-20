@@ -564,6 +564,7 @@ export function onActivate() {
 
             wiFilter = createWiFilter({
                 wi: wiAdapter(),
+                onExplore: () => explorer.open(currentBookName()),
                 io: {
                     /** Lists plus per-entry membership for the lorebook on screen. */
                     readBook: async name => {
@@ -584,7 +585,6 @@ export function onActivate() {
                 storage: store,
                 onAttach: attachImageToEntry,
                 onOpen: () => gallery.open(),
-                onExplore: () => explorer.open(currentBookName()),
                 // A rescan renders rows unfiltered; re-apply before the user sees them.
                 onAfterScan: () => {
                     wiFilter?.mount();

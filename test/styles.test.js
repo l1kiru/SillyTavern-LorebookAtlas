@@ -132,3 +132,23 @@ test('the orphan badge does not borrow SillyTavern red', () => {
     assert.match(css, /--lba-attention:\s*#d09a3c/);
     assert.match(css, /--lba-danger:\s*var\(--warning,/);
 });
+
+test('World Info entry thumbs stay inside the collapsed header row', () => {
+    // SillyTavern's collapsed .world_entry is ~60px on a default 1920x1080 theme
+    // (--mainFontSize 15px, text_pole/menu_button padding and margins). A 96%
+    // width with a 220px cap wrapped the chrome onto a new flex line and blew
+    // the row to more than three times that height.
+    assert.doesNotMatch(css, /--lba-entry-thumb-max-height:\s*220px/);
+    assert.doesNotMatch(css, /--lba-entry-thumb-width:\s*96%/);
+    assert.match(css, /--lba-entry-thumb-height:\s*calc\(var\(--mainFontSize,\s*15px\)\s*\*\s*4\)/);
+    assert.doesNotMatch(css, /\.lba-entry-chrome[^{]*\{[^}]*flex:\s*1\s+1\s+100%/);
+    assert.doesNotMatch(css, /\.lba-entry-button--set[^{]*\{[^}]*flex:\s*1\s+1\s+100%/);
+    // Same compounding as .lba-button--icon, otherwise that rule's padding wins.
+    assert.match(css, /\.menu_button\.lba-entry-button--set/);
+
+    // SillyTavern's mobile sheet is 1000px; a desktop-sized thumb starves the title.
+    const mobile = css.match(/@media\s*\(max-width:\s*1000px\)\s*\{([\s\S]*?)\n\}/);
+    assert.ok(mobile, 'entry thumbs need a rule at SillyTavern\'s 1000px breakpoint');
+    assert.match(mobile[1], /--lba-entry-thumb-height:\s*calc\(var\(--mainFontSize,\s*15px\)\s*\*\s*2\.2\)/);
+    assert.match(mobile[1], /\.lba-entry-chrome[^{]*\{[^}]*flex:\s*0\s+1\s+auto/);
+});

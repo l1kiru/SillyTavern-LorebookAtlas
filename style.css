@@ -255,48 +255,62 @@
 }
 
 /*
- * The thumbnail stays in the entry's own controls row — it is what the row is for — but at
- * 20px it was an indicator, not a picture: browsing a lorebook you could not tell what was
- * attached. It now spans the row, less a small margin, so the row reads at a glance.
+ * The thumbnail sits in the collapsed World Info header — the same row as the
+ * title, kill-switch and position controls. On a default 1920x1080 theme that
+ * row is ~60px tall (text_pole + menu_button around --mainFontSize of 15px).
  *
- * Tune with --lba-entry-thumb-width; the height follows the aspect ratio up to the cap.
+ * Width 96% / max-height 220px used to wrap the chrome onto its own flex line
+ * and stretch the entry to more than three times the stock height. Height now
+ * tracks --mainFontSize so a scaled UI keeps the same proportion.
  */
 .lba-entry-chrome {
-    --lba-entry-thumb-width: 96%;
-    --lba-entry-thumb-max-height: 220px;
-}
-
-/*
- * Only an entry that actually has an image takes the full width. Keyed off the id the
- * decorator already writes, rather than :has(), so no modern-selector dependency.
- */
-.lba-entry-chrome[data-lba-image]:not([data-lba-image=""]) {
+    --lba-entry-thumb-height: calc(var(--mainFontSize, 15px) * 4);
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 0 0 auto;
 }
 
 .lba-entry-thumb {
     display: block;
-    width: var(--lba-entry-thumb-width);
-    height: auto;
-    max-height: var(--lba-entry-thumb-max-height);
-    object-fit: contain;
+    height: var(--lba-entry-thumb-height);
+    width: calc(var(--lba-entry-thumb-height) * 1.4);
+    object-fit: cover;
     border-radius: var(--lba-radius);
     background: var(--lba-surface);
 }
 
-/* The button is just a frame around the image at this size, so it stops looking like one. */
-.lba-entry-button--set {
+/* Compounded with .menu_button so this beats .menu_button.lba-button--icon padding. */
+.menu_button.lba-entry-button--set {
     padding: 0;
+    margin: 0;
     border: none;
     background: none;
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto;
     height: auto;
+}
+
+/*
+ * SillyTavern's mobile sheet is max-width: 1000px. world_entry_thin_controls
+ * stays a nowrap row there, so a 60x84 thumb plus the list button eats the
+ * title. Smaller picture; chrome may shrink further instead of clipping title.
+ */
+@media (max-width: 1000px) {
+    .lba-entry-chrome {
+        --lba-entry-thumb-height: calc(var(--mainFontSize, 15px) * 2.2);
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    .menu_button.lba-entry-button--set {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    .lba-entry-thumb {
+        max-width: 100%;
+    }
 }
 
 /* ------------------------------------------------------------------ settings panel */
@@ -595,12 +609,6 @@
     opacity: 0.7;
     font-size: 0.85em;
 }
-
-.lba-entry-lists {
-    flex: 0 0 auto;
-    padding: 2px 6px;
-}
-
 
 /* ------------------------------------------------------------------ list filter */
 
