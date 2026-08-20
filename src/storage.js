@@ -95,7 +95,7 @@ export function createStorage({ api, onChange } = {}) {
                 groupId,
                 locked: false,
                 sha256: prepared.sha256,
-                mime: blob.type,
+                mime: prepared.mime || blob.type,
                 bytes: prepared.bytes,
                 width: prepared.width,
                 height: prepared.height,

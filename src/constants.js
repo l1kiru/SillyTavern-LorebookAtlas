@@ -82,6 +82,12 @@ export const MIME_EXT = Object.freeze({
     'image/jpeg': 'jpg',
     'image/webp': 'webp',
     'image/gif': 'gif',
+    'image/avif': 'avif',
+    'image/svg+xml': 'svg',
+    'image/bmp': 'bmp',
+    'image/x-icon': 'ico',
+    'image/vnd.microsoft.icon': 'ico',
+    'image/tiff': 'tiff',
 });
 
 export const EXT_MIME = Object.freeze({
@@ -90,6 +96,12 @@ export const EXT_MIME = Object.freeze({
     jpeg: 'image/jpeg',
     webp: 'image/webp',
     gif: 'image/gif',
+    avif: 'image/avif',
+    svg: 'image/svg+xml',
+    bmp: 'image/bmp',
+    ico: 'image/x-icon',
+    tiff: 'image/tiff',
+    tif: 'image/tiff',
 });
 
 export const DEFAULTS = Object.freeze({

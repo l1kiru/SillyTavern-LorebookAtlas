@@ -160,6 +160,7 @@
     "lba.error.notAnImage": "Файл не распознан как изображение",
     "lba.error.unsupportedFormat": "Формат не поддерживается: {mime}",
     "lba.error.unknownMime": "неизвестен",
+    "lba.error.heicNotSupported": "HEIC не поддерживается этим браузером. Сохраните изображение как JPEG или PNG и загрузите снова.",
 
     "lba.unit.b": "Б",
     "lba.unit.kb": "КБ",

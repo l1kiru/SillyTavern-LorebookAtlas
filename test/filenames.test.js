@@ -10,7 +10,7 @@ const SHA = '9c1f2e3a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6';
 
 test('generated names satisfy SillyTavern validateAssetFileName', () => {
     for (const variant of Object.values(VARIANT)) {
-        for (const mime of ['image/png', 'image/jpeg', 'image/webp', 'image/gif']) {
+        for (const mime of ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml', 'image/bmp']) {
             const name = buildFileName({ groupId: GROUP, imageId: IMAGE, variant, sha256: SHA, mime });
             assert.match(name, SAFE_FILENAME_RE, `rejected: ${name}`);
             assert.ok(!name.startsWith('.'), 'name must not start with a dot');
@@ -49,6 +49,6 @@ test('a different content hash produces a different name, defeating stale caches
 
 test('unsupported inputs are rejected loudly', () => {
     assert.throws(() => buildFileName({ groupId: GROUP, imageId: IMAGE, variant: 'thumbnail', sha256: SHA, mime: 'image/webp' }), /variant/i);
-    assert.throws(() => buildFileName({ groupId: GROUP, imageId: IMAGE, variant: VARIANT.PREVIEW, sha256: SHA, mime: 'image/bmp' }), /mime/i);
+    assert.throws(() => buildFileName({ groupId: GROUP, imageId: IMAGE, variant: VARIANT.PREVIEW, sha256: SHA, mime: 'image/heic' }), /mime/i);
     assert.throws(() => buildFileName({ groupId: '', imageId: IMAGE, variant: VARIANT.PREVIEW, sha256: SHA, mime: 'image/webp' }), /required/i);
 });

@@ -189,6 +189,7 @@ export const STRINGS = Object.freeze({
     'error.notAnImage': 'File was not recognised as an image',
     'error.unsupportedFormat': 'Unsupported format: {mime}',
     'error.unknownMime': 'unknown',
+    'error.heicNotSupported': 'HEIC is not supported in this browser. Save the image as JPEG or PNG and try again.',
 
     // Byte units
     'unit.b': 'B',

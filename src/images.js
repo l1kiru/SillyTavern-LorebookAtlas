@@ -9,16 +9,59 @@
 import { DEFAULTS, MIME_EXT } from './constants.js';
 import { sha256Hex } from './util.js';
 import { T } from './i18n.js';
+import { resolveImageMime, isHeicMime } from './mime-detect.js';
 
-/** Decodes and measures a blob, rejecting anything the browser refuses to parse. */
-export async function probeImage(blob) {
-    let bitmap;
+function makeCanvas(width, height) {
+    return typeof OffscreenCanvas === 'function'
+        ? new OffscreenCanvas(width, height)
+        : Object.assign(document.createElement('canvas'), { width, height });
+}
+
+async function canvasToBlob(canvas, mime, quality) {
+    if (typeof canvas.convertToBlob === 'function') {
+        return await canvas.convertToBlob({ type: mime, quality });
+    }
+    return await new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+}
+
+/** SVG is unreliable in createImageBitmap; HTMLImageElement.decode() is the stable path. */
+async function decodeSvg(blob) {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
     try {
-        bitmap = await createImageBitmap(blob);
-    } catch (error) {
+        img.src = url;
+        await img.decode();
+        return img;
+    } catch {
+        throw new Error(T('error.notAnImage'));
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+async function decodeRaster(blob) {
+    try {
+        return await createImageBitmap(blob);
+    } catch {
         throw new Error(T('error.notAnImage'));
     }
-    const result = { width: bitmap.width, height: bitmap.height, mime: blob.type, bytes: blob.size };
+}
+
+function scaledSize(srcW, srcH, maxSide) {
+    const width = srcW || maxSide;
+    const height = srcH || maxSide;
+    const scale = Math.min(1, maxSide / Math.max(width, height));
+    return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}
+
+/** Decodes and measures a blob, rejecting anything the browser refuses to parse. */
+export async function probeImage(blob, mime = blob.type) {
+    if (mime === 'image/svg+xml') {
+        const img = await decodeSvg(blob);
+        return { width: img.naturalWidth || 0, height: img.naturalHeight || 0, mime, bytes: blob.size };
+    }
+    const bitmap = await decodeRaster(blob);
+    const result = { width: bitmap.width, height: bitmap.height, mime, bytes: blob.size };
     bitmap.close?.();
     return result;
 }
@@ -26,26 +69,29 @@ export async function probeImage(blob) {
 /**
  * Downscales to fit within maxSide, preserving aspect ratio. Images already small enough
  * are re-encoded anyway, so the preview format stays predictable.
+ * SVG is rasterised here: crop/object-fit only behave on bitmaps.
  * @returns {Promise<Blob>}
  */
-export async function downscale(blob, { maxSide = DEFAULTS.previewMaxSide, mime = DEFAULTS.previewMime, quality = DEFAULTS.previewQuality } = {}) {
-    const bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-    const width = Math.max(1, Math.round(bitmap.width * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
-
-    const canvas = typeof OffscreenCanvas === 'function'
-        ? new OffscreenCanvas(width, height)
-        : Object.assign(document.createElement('canvas'), { width, height });
-
-    const context = canvas.getContext('2d');
-    context.drawImage(bitmap, 0, 0, width, height);
-    bitmap.close?.();
-
-    if (typeof canvas.convertToBlob === 'function') {
-        return await canvas.convertToBlob({ type: mime, quality });
+export async function downscale(blob, {
+    maxSide = DEFAULTS.previewMaxSide,
+    mime = DEFAULTS.previewMime,
+    quality = DEFAULTS.previewQuality,
+    sourceMime = blob.type,
+} = {}) {
+    if (sourceMime === 'image/svg+xml') {
+        const img = await decodeSvg(blob);
+        const size = scaledSize(img.naturalWidth, img.naturalHeight, maxSide);
+        const canvas = makeCanvas(size.width, size.height);
+        canvas.getContext('2d').drawImage(img, 0, 0, size.width, size.height);
+        return await canvasToBlob(canvas, mime, quality);
     }
-    return await new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+
+    const bitmap = await decodeRaster(blob);
+    const size = scaledSize(bitmap.width, bitmap.height, maxSide);
+    const canvas = makeCanvas(size.width, size.height);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, size.width, size.height);
+    bitmap.close?.();
+    return await canvasToBlob(canvas, mime, quality);
 }
 
 /** Blob -> base64 without the data: prefix. */
@@ -66,22 +112,25 @@ export async function blobToBase64(blob) {
  */
 export async function prepareVariants(blob, options = {}) {
     const keepOriginal = options.keepOriginal ?? DEFAULTS.keepOriginal;
-    const probe = await probeImage(blob);
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const mime = resolveImageMime(blob.type, bytes);
 
-    if (!MIME_EXT[blob.type]) {
-        throw new Error(T('error.unsupportedFormat', { mime: blob.type || T('error.unknownMime') }));
-    }
+    if (isHeicMime(mime)) throw new Error(T('error.heicNotSupported'));
+    if (!MIME_EXT[mime]) throw new Error(T('error.unsupportedFormat', { mime: mime || T('error.unknownMime') }));
 
-    const sha256 = await sha256Hex(await blob.arrayBuffer());
-    const previewBlob = await downscale(blob, options);
+    const typed = blob.type === mime ? blob : new Blob([buffer], { type: mime });
+    const probe = await probeImage(typed, mime);
+    const sha256 = await sha256Hex(buffer);
+    const previewBlob = await downscale(typed, { ...options, sourceMime: mime });
 
     const variants = {
         preview: { blob: previewBlob, mime: previewBlob.type || DEFAULTS.previewMime },
     };
 
-    if (keepOriginal && blob.size <= (options.maxOriginalBytes ?? DEFAULTS.maxOriginalBytes)) {
-        variants.original = { blob, mime: blob.type };
+    if (keepOriginal && typed.size <= (options.maxOriginalBytes ?? DEFAULTS.maxOriginalBytes)) {
+        variants.original = { blob: typed, mime };
     }
 
-    return { sha256, width: probe.width, height: probe.height, bytes: blob.size, variants };
+    return { sha256, width: probe.width, height: probe.height, bytes: typed.size, mime, variants };
 }
