@@ -55,14 +55,6 @@ export const WI_SELECTORS = Object.freeze({
         '.world_entry_edit',
         '.inline-drawer-content',
     ],
-    // Where a full-width preview belongs. The form is the widest stable block inside an
-    // expanded entry, so sizing against it is what "as wide as the entry" actually means.
-    form: [
-        '.world_entry_form',
-        '.inline-drawer-outlet .world_entry_edit',
-        '.inline-drawer-outlet',
-        '.world_entry_edit',
-    ],
     uidText: [
         '.world_entry_form_uid_value',
         '[data-lba-uid-text]',
@@ -177,10 +169,6 @@ export function createWiAdapter(doc = globalThis.document) {
             return firstMatching(entryNode, WI_SELECTORS.outlet);
         },
 
-        /** The block a full-width preview should be sized and inserted against. */
-        formTarget(entryNode) {
-            return firstMatching(entryNode, WI_SELECTORS.form);
-        },
 
         /**
          * A class alone is not enough — SillyTavern animates the drawer, so the markers and

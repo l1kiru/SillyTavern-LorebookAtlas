@@ -254,16 +254,49 @@
     padding: 2px 6px;
 }
 
-.lba-entry-thumb {
-    width: 20px;
-    height: 20px;
-    object-fit: cover;
-    border-radius: 3px;
-    display: block;
+/*
+ * The thumbnail stays in the entry's own controls row — it is what the row is for — but at
+ * 20px it was an indicator, not a picture: browsing a lorebook you could not tell what was
+ * attached. It now spans the row, less a small margin, so the row reads at a glance.
+ *
+ * Tune with --lba-entry-thumb-width; the height follows the aspect ratio up to the cap.
+ */
+.lba-entry-chrome {
+    --lba-entry-thumb-width: 96%;
+    --lba-entry-thumb-max-height: 220px;
 }
 
+/*
+ * Only an entry that actually has an image takes the full width. Keyed off the id the
+ * decorator already writes, rather than :has(), so no modern-selector dependency.
+ */
+.lba-entry-chrome[data-lba-image]:not([data-lba-image=""]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 100%;
+    width: 100%;
+}
+
+.lba-entry-thumb {
+    display: block;
+    width: var(--lba-entry-thumb-width);
+    height: auto;
+    max-height: var(--lba-entry-thumb-max-height);
+    object-fit: contain;
+    border-radius: var(--lba-radius);
+    background: var(--lba-surface);
+}
+
+/* The button is just a frame around the image at this size, so it stops looking like one. */
 .lba-entry-button--set {
-    padding: 2px;
+    padding: 0;
+    border: none;
+    background: none;
+    flex: 1 1 100%;
+    width: 100%;
+    height: auto;
 }
 
 /* ------------------------------------------------------------------ settings panel */
@@ -568,31 +601,6 @@
     padding: 2px 6px;
 }
 
-
-/* ------------------------------------------------------------------ entry preview */
-
-/*
- * A picture the user can actually see, inside an expanded World Info entry.
- * 96% of the form it sits in — wide enough to read at a glance, with a margin so it does
- * not touch the edges of the surrounding controls.
- */
-.lba-entry-preview {
-    width: 96%;
-    margin: 0 auto 8px;
-    border-radius: var(--lba-radius);
-    overflow: hidden;
-    border: 1px solid var(--lba-border-soft);
-    background: var(--lba-surface);
-}
-
-.lba-entry-preview__img {
-    display: block;
-    width: 100%;
-    height: auto;
-    /* Tall images would otherwise push the form off screen. */
-    max-height: 45vh;
-    object-fit: contain;
-}
 
 /* ------------------------------------------------------------------ list filter */
 

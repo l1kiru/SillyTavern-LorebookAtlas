@@ -18,7 +18,6 @@ import { T } from '../i18n.js';
 import { createWiAdapter, bindInteractionBoundary } from './wi-adapter.js';
 
 const CHROME_CLASS = 'lba-entry-chrome';
-const PREVIEW_CLASS = 'lba-entry-preview';
 
 export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAfterScan }) {
     const wi = createWiAdapter();
@@ -70,44 +69,6 @@ export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAft
         return chrome;
     }
 
-    /**
-     * A full-width preview inside an expanded entry.
-     *
-     * The 20px thumbnail on the header button is an indicator, not a picture — at that size
-     * it is impossible to tell what is actually attached. The preview only exists while the
-     * entry is open, so a collapsed list stays compact.
-     */
-    function renderPreview(entryNode, uid) {
-        const existing = entryNode.querySelector(`:scope .${PREVIEW_CLASS}`);
-        const image = imageFor(uid);
-
-        if (!image || !wi.isExpanded(entryNode)) {
-            existing?.remove();
-            return;
-        }
-
-        const source = `/${image.variants.original || image.variants.preview}`;
-        if (existing) {
-            if (existing.dataset.lbaSource === source) return;
-            existing.remove();
-        }
-
-        const target = wi.formTarget(entryNode);
-        if (!target) return;
-
-        const preview = el('div', { class: PREVIEW_CLASS, dataset: { lbaSource: source } }, [
-            el('img', {
-                class: 'lba-entry-preview__img',
-                src: source,
-                alt: image.originalName || '',
-                loading: 'lazy',
-                title: image.originalName || '',
-            }),
-        ]);
-        bindInteractionBoundary(preview);
-        target.prepend(preview);
-    }
-
     function decorate(entryNode) {
         const uid = wi.uidOf(entryNode);
         if (!uid) return false;
@@ -116,11 +77,7 @@ export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAft
         if (existing) {
             // Already decorated. Refresh only if the thumbnail is out of date, so a rescan
             // does not churn the DOM on every mutation.
-            if (existing.dataset.lbaImage === String(imageFor(uid)?.id ?? '')) {
-                // The chrome is current, but the drawer may have just opened or closed.
-                renderPreview(entryNode, uid);
-                return true;
-            }
+            if (existing.dataset.lbaImage === String(imageFor(uid)?.id ?? '')) return true;
             existing.remove();
         }
 
@@ -136,7 +93,6 @@ export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAft
         else target.prepend(chrome);
 
         entryNode.classList.add('lba-entry-enhanced');
-        renderPreview(entryNode, uid);
         return true;
     }
 
@@ -188,14 +144,7 @@ export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAft
             scan();
             observer?.disconnect();
             observer = new MutationObserver(() => scan());
-            // Attributes matter as well as children: opening a drawer toggles classes
-            // rather than inserting nodes, and that is when the preview must appear.
-            observer.observe(list, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class', 'style', 'aria-expanded'],
-            });
+            observer.observe(list, { childList: true, subtree: true });
         },
 
         stop() {
@@ -208,7 +157,6 @@ export function createEntryButtons({ storage, onAttach, onOpen, onExplore, onAft
         /** Forces a rebuild after the catalogue changed under us. */
         refresh() {
             for (const chrome of document.querySelectorAll(`.${CHROME_CLASS}`)) chrome.remove();
-            for (const preview of document.querySelectorAll(`.${PREVIEW_CLASS}`)) preview.remove();
             scan();
         },
 
