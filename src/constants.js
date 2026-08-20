@@ -19,6 +19,13 @@ function resolveExtensionFolder() {
 
 export const EXTENSION_FOLDER = resolveExtensionFolder();
 
+/**
+ * Settings template, addressed relative to the extension folder.
+ * Kept next to EXTENSION_FOLDER because the two are always used together, and a mismatch
+ * between this and the file on disk fails as a 404 that only shows up at runtime.
+ */
+export const TEMPLATE_ID = 'templates/settings';
+
 export const SCHEMA_VERSION = 2;
 
 /**

@@ -4,7 +4,7 @@
  * handling for free, unlike building the markup by hand.
  */
 
-import { EXTENSION_FOLDER } from '../constants.js';
+import { EXTENSION_FOLDER, TEMPLATE_ID } from '../constants.js';
 import { T } from '../i18n.js';
 import { formatBytes } from '../util.js';
 import { el } from './dom.js';
@@ -74,15 +74,29 @@ export function createSettingsPanel({ storage, context, settings, gallery, actio
         async mount(host = document.getElementById('extensions_settings2')) {
             // The template carries English source text plus data-i18n keys; SillyTavern's
             // observer swaps in the active locale automatically.
-            const html = await context.renderExtensionTemplateAsync(EXTENSION_FOLDER, 'settings', {
+            //
+            // The id is a path relative to the extension folder, not a bare name: SillyTavern
+            // builds `scripts/extensions/<folder>/<id>.html` by plain concatenation.
+            const html = await context.renderExtensionTemplateAsync(EXTENSION_FOLDER, TEMPLATE_ID, {
                 keepOriginal: settings().keepOriginal,
                 previewMaxSide: settings().previewMaxSide,
             });
 
             const wrapper = el('div');
-            wrapper.innerHTML = html;
+            // renderTemplateAsync swallows its own errors and resolves to undefined, so a
+            // missing template arrives here as silence. Say what happened instead of
+            // throwing on a null child three lines later.
+            wrapper.innerHTML = typeof html === 'string' ? html : '';
             const container = wrapper.firstElementChild;
-            host?.append(container);
+            if (!container) {
+                throw new Error(`Could not render ${EXTENSION_FOLDER}/${TEMPLATE_ID}.html — the file is missing or empty`);
+            }
+            // Same class of silence as the template 404: without the host the panel simply
+            // never appears and nothing says why.
+            if (!host) {
+                throw new Error('SillyTavern settings container #extensions_settings2 was not found');
+            }
+            host.append(container);
 
             container.querySelector('#lba_binding_strategy').value = settings().bindingStrategy;
 

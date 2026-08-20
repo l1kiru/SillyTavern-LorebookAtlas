@@ -80,6 +80,38 @@ test('the extension folder is derived, not hardcoded', async () => {
     assert.match(EXTENSION_FOLDER, /^third-party\//, 'the node fallback must still be usable');
 });
 
+test('every template the code asks for exists on disk', async () => {
+    // renderExtensionTemplateAsync builds `scripts/extensions/<folder>/<id>.html` by plain
+    // concatenation and swallows a 404 into a resolved-undefined. The mismatch therefore
+    // surfaces only at runtime, in a live install, as an empty settings panel.
+    const { TEMPLATE_ID } = await import('../src/constants.js');
+    assert.ok(
+        fs.existsSync(path.join(root, `${TEMPLATE_ID}.html`)),
+        `${TEMPLATE_ID}.html does not exist; the settings panel would 404`,
+    );
+});
+
+test('the template id is not duplicated as a literal at the call site', () => {
+    // Two copies of the path drift apart; the constant is the single source of truth.
+    const settings = read('src/ui/settings.js');
+    assert.match(settings, /renderExtensionTemplateAsync\(\s*EXTENSION_FOLDER\s*,\s*TEMPLATE_ID/);
+});
+
+test('a failed template render is reported, not left to crash on a null child', () => {
+    const settings = read('src/ui/settings.js');
+    assert.match(settings, /if \(!container\)/, 'mount() must check the render actually produced an element');
+});
+
+test('one failing init step does not abort the others', () => {
+    // A missing settings template used to take the entry buttons, slash commands and group
+    // sync down with it, because they shared a single try block.
+    const entry = read('index.js');
+    assert.match(entry, /\['settings panel'/);
+    assert.match(entry, /\['world info buttons'/);
+    assert.match(entry, /\['slash commands'/);
+    assert.match(entry, /\['group sync'/);
+});
+
 test('nothing in the repository points at a placeholder URL', () => {
     const manifest = readJson('manifest.json');
     if (!manifest.homePage) return;

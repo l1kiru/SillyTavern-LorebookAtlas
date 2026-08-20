@@ -557,10 +557,21 @@ export function onActivate() {
                 onExplore: () => explorer.open(currentBookName()),
             });
 
-            await settingsPanel.mount();
-            entryButtons.start();
-            registerCommandsOnce();
-            await syncGroups();
+            // Each step is isolated: a failing settings panel used to abort the whole
+            // handler, taking the entry buttons, slash commands and group sync with it.
+            // One broken piece should degrade, not disable the extension.
+            for (const [name, step] of [
+                ['settings panel', () => settingsPanel.mount()],
+                ['world info buttons', () => entryButtons.start()],
+                ['slash commands', () => registerCommandsOnce()],
+                ['group sync', () => syncGroups()],
+            ]) {
+                try {
+                    await step();
+                } catch (error) {
+                    console.error(`[${MODULE_NAME}] ${name} failed to initialise:`, error);
+                }
+            }
         } catch (error) {
             console.error(`[${MODULE_NAME}] initialisation failed:`, error);
         }
