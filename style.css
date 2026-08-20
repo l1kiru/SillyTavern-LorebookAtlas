@@ -281,6 +281,30 @@
     margin-bottom: 8px;
 }
 
+/*
+ * SillyTavern's .menu_button is written for its own containers, where it stretches to
+ * share the row. Dropped into a flex row of ours it collapses to the smallest thing that
+ * fits, and the labels end up cramped or wrapped. Rather than guess at the upstream rule,
+ * our rows state their own metrics: never shrink below the label, keep real padding.
+ */
+.lba-settings-row .menu_button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: fit-content;
+    padding: 6px 14px;
+    height: auto;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* On a narrow drawer wrapping is better than a row of squeezed buttons. */
+@media (max-width: 500px) {
+    .lba-settings-row .menu_button {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
 .lba-hint {
     display: block;
     opacity: 0.6;
@@ -542,4 +566,85 @@
 .lba-entry-lists {
     flex: 0 0 auto;
     padding: 2px 6px;
+}
+
+
+/* ------------------------------------------------------------------ entry preview */
+
+/*
+ * A picture the user can actually see, inside an expanded World Info entry.
+ * 96% of the form it sits in — wide enough to read at a glance, with a margin so it does
+ * not touch the edges of the surrounding controls.
+ */
+.lba-entry-preview {
+    width: 96%;
+    margin: 0 auto 8px;
+    border-radius: var(--lba-radius);
+    overflow: hidden;
+    border: 1px solid var(--lba-border-soft);
+    background: var(--lba-surface);
+}
+
+.lba-entry-preview__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* Tall images would otherwise push the form off screen. */
+    max-height: 45vh;
+    object-fit: contain;
+}
+
+/* ------------------------------------------------------------------ list filter */
+
+.lba-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    margin-bottom: 6px;
+    border: 1px solid var(--lba-border-soft);
+    border-radius: var(--lba-radius);
+    background: var(--lba-surface);
+}
+
+/* A filtered list looks broken unless it is obvious that it is filtered. */
+.lba-filter-bar--active {
+    border-color: var(--lba-accent);
+}
+
+.lba-filter-bar__label {
+    opacity: 0.7;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.lba-filter-bar__select {
+    flex: 1;
+    min-width: 0;
+}
+
+.lba-filter-bar__count {
+    opacity: 0.7;
+    font-size: 0.85em;
+    min-width: 2em;
+    text-align: right;
+}
+
+/*
+ * Entries are hidden, never reordered: SillyTavern runs a sortable over this list and
+ * writes the order back into the lorebook.
+ */
+.lba-entry-filtered-out {
+    display: none !important;
+}
+
+.lba-hidden {
+    display: none !important;
+}
+
+/* Shown only in fallback mode, where hiding rows cannot see past the current page. */
+.lba-filter-bar__warning {
+    font-size: 0.8em;
+    color: var(--lba-attention);
+    white-space: nowrap;
 }

@@ -89,6 +89,8 @@
     "lba.list.rootLabel": "Все записи",
     "lba.list.explorer": "Обозреватель лорбука",
     "lba.list.filterActive": "Фильтр по списку: {name}",
+    "lba.filter.label": "Список",
+    "lba.filter.pageOnly": "только текущая страница",
     "lba.list.clearFilter": "Показать все записи",
 
     "lba.archive.export": "Выгрузить архив",

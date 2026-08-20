@@ -12,7 +12,7 @@ import { createStorage } from './src/storage.js';
 import { resumePendingCleanup } from './src/cleanup.js';
 import { reconcileGroups } from './src/groups.js';
 import { T } from './src/i18n.js';
-import { discoverBindings, ensureGroupId, writeEntryImage, readGroupId, STRATEGY } from './src/lorebook-binding.js';
+import { discoverBindings, ensureGroupId, writeEntryImage, readGroupId, entriesWithLists, STRATEGY } from './src/lorebook-binding.js';
 import { buildArchive, readArchive, estimateArchiveBytes } from './src/archive.js';
 import { applyRestore } from './src/restore.js';
 import { reconstructMissingLists } from './src/lists.js';
@@ -23,6 +23,7 @@ import { createRestorePreview } from './src/ui/restore-preview.js';
 import { createSettingsPanel } from './src/ui/settings.js';
 import { createEntryButtons } from './src/ui/entry-button.js';
 import { createWiAdapter } from './src/ui/wi-adapter.js';
+import { createWiFilter } from './src/ui/wi-filter.js';
 
 let sharedAdapter = null;
 function wiAdapter() {
@@ -77,6 +78,7 @@ let gallery = null;
 let settingsPanel = null;
 let entryButtons = null;
 let explorer = null;
+let wiFilter = null;
 
 function ctx() {
     return globalThis.SillyTavern?.getContext?.() ?? null;
@@ -480,6 +482,16 @@ export async function onClean() {
  * deletes go out with keepalive and outlive the page reload, so waiting on them would
  * spend the 5s budget for nothing.
  */
+/** Removes our filter function from SillyTavern's registry before the module goes away. */
+export function onDisable() {
+    try {
+        wiFilter?.detach();
+        entryButtons?.stop();
+    } catch (error) {
+        console.error(`[${MODULE_NAME}] teardown failed:`, error);
+    }
+}
+
 export async function onDelete() {
     try {
         const store = await getStorage();
@@ -550,11 +562,34 @@ export function onActivate() {
                 },
             });
 
+            wiFilter = createWiFilter({
+                wi: wiAdapter(),
+                io: {
+                    /** Lists plus per-entry membership for the lorebook on screen. */
+                    readBook: async name => {
+                        const book = await loadBookCached(name);
+                        if (!book) return null;
+                        const groupId = readGroupId(book);
+                        return {
+                            lists: groupId ? store.listsOf(groupId) : {},
+                            entries: entriesWithLists(book),
+                        };
+                    },
+                    imageForEntry: uid => Object.values(store.manifest.images)
+                        .find(image => (image.refs || []).some(ref => String(ref.entryUid) === String(uid))) ?? null,
+                },
+            });
+
             entryButtons = createEntryButtons({
                 storage: store,
                 onAttach: attachImageToEntry,
                 onOpen: () => gallery.open(),
                 onExplore: () => explorer.open(currentBookName()),
+                // A rescan renders rows unfiltered; re-apply before the user sees them.
+                onAfterScan: () => {
+                    wiFilter?.mount();
+                    wiFilter?.refresh();
+                },
             });
 
             // Each step is isolated: a failing settings panel used to abort the whole
@@ -580,6 +615,7 @@ export function onActivate() {
     // Renames, deletions and imports of lorebooks all surface here.
     context.eventSource.on(context.event_types.WORLDINFO_UPDATED, () => {
         invalidateBookCache();
+        void wiFilter?.reload().catch(error => console.error(`[${MODULE_NAME}] filter reload:`, error));
         void syncGroups().catch(error => console.error(`[${MODULE_NAME}] group sync:`, error));
     });
 }

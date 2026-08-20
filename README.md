@@ -10,7 +10,8 @@ No server plugin required — everything lives in SillyTavern's own per-user fil
 - **Images on entries.** Attach a picture to any World Info entry. Identical files are
   stored once and reused.
 - **Lists.** Group entries into nested lists; an entry can belong to several at once.
-  Useful once a lorebook outgrows a flat list of a few dozen entries.
+  SillyTavern's own entry list can then be filtered down to one list, which is what makes
+  a lorebook of a few hundred entries workable.
 - **Gallery.** Browse stored images grouped by lorebook, with locks to protect individual
   images from bulk deletion.
 - **Archive.** Export everything, or a single lorebook with its images, as one `.zip`.

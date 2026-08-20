@@ -16,6 +16,7 @@
         "update": "onUpdate",
         "delete": "onDelete",
         "clean": "onClean",
+        "disable": "onDisable",
         "activate": "onActivate"
     }
 }

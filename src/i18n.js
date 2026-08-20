@@ -116,6 +116,8 @@ export const STRINGS = Object.freeze({
     'list.rootLabel': 'All entries',
     'list.explorer': 'Lorebook explorer',
     'list.filterActive': 'Filtering by list: {name}',
+    'filter.label': 'List',
+    'filter.pageOnly': 'current page only',
     'list.clearFilter': 'Show all entries',
 
     // Archive and restore
