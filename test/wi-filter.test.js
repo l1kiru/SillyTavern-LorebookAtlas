@@ -72,6 +72,9 @@ function fakeFilterHelper() {
             helper.filterData[type] = value;
             helper.changes += 1;
         },
+        getFilterData(type) {
+            return helper.filterData[type];
+        },
         /** Mirrors applyFilters: reduce the array through every registered function. */
         applyFilters(data) {
             return Object.values(helper.filterFunctions).reduce((acc, fn) => fn(acc), data);

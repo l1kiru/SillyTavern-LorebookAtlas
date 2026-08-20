@@ -183,6 +183,7 @@ test('crop overlay stays in the World Info popup stacking context', () => {
     const entryButton = sources.find(s => s.file.includes('entry-button')).text;
     assert.match(entryButton, /cropOverlayBox/);
     assert.match(entryButton, /_lbaScrollCleanup/);
+    assert.match(entryButton, /observer\.observe\(list,\s*\{\s*childList:\s*true\s*\}\)/);
 });
 
 test('layout preset falls back to normal and writes the clamp variables', () => {

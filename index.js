@@ -16,7 +16,7 @@ import { discoverBindings, ensureGroupId, writeEntryImage, writeEntryCrop, readE
 import { buildArchive, readArchive, estimateArchiveBytes } from './src/archive.js';
 import { applyRestore } from './src/restore.js';
 import { reconstructMissingLists } from './src/lists.js';
-import { formatBytes } from './src/util.js';
+import { formatBytes, debounce } from './src/util.js';
 import { imageByRef, groupIdForLorebook } from './src/manifest-model.js';
 import { createGallery } from './src/ui/gallery.js';
 import { createExplorer } from './src/ui/explorer.js';
@@ -628,9 +628,13 @@ export function onActivate() {
                 onOpen: () => gallery.open(),
                 // A rescan renders rows unfiltered; re-apply before the user sees them.
                 onAfterScan: () => {
-                    wiFilter?.mount();
-                    wiFilter?.refresh();
-                    void loadCropsForOpenBook();
+                    requestAnimationFrame(() => {
+                        wiFilter?.mount();
+                        wiFilter?.refresh();
+                        const loadCrops = () => { void loadCropsForOpenBook(); };
+                        if (typeof requestIdleCallback === 'function') requestIdleCallback(loadCrops, { timeout: 300 });
+                        else loadCrops();
+                    });
                 },
             });
 
@@ -654,11 +658,16 @@ export function onActivate() {
         }
     });
 
-    // Renames, deletions and imports of lorebooks all surface here.
-    context.eventSource.on(context.event_types.WORLDINFO_UPDATED, () => {
-        invalidateBookCache();
-        void wiFilter?.reload().catch(error => console.error(`[${MODULE_NAME}] filter reload:`, error));
+    // Switching books is a view change, not a catalogue rewrite. Debounce the full
+    // library walk so it does not fight SillyTavern's own entry-list rebuild.
+    const debouncedSyncGroups = debounce(() => {
         void syncGroups().catch(error => console.error(`[${MODULE_NAME}] group sync:`, error));
+    }, 500);
+
+    context.eventSource.on(context.event_types.WORLDINFO_UPDATED, () => {
+        void wiFilter?.reload().catch(error => console.error(`[${MODULE_NAME}] filter reload:`, error));
+        void loadCropsForOpenBook();
+        debouncedSyncGroups();
     });
 }
 

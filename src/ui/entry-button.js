@@ -136,6 +136,7 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
     let bootstrap = null;
     let generation = 0;
     let crops = Object.create(null);
+    let cropBook = '';
 
     function imageFor(uid) {
         return imageByRef(storage.manifest, {
@@ -346,26 +347,44 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         const mine = ++generation;
         const run = () => {
             if (mine !== generation) return;
+            const book = wi.bookName();
+            if (book !== cropBook) {
+                cropBook = book;
+                crops = Object.create(null);
+            }
             const entries = wi.entries();
+            const chunk = 25;
+            let i = 0;
             let decorated = 0;
 
-            for (const node of entries) {
+            const finish = () => {
+                if (entries.length && !decorated) {
+                    console.warn('[lorebook-atlas] World Info entries found but no uid could be read; markup may have changed', wi.diagnostics());
+                }
+                try {
+                    onAfterScan?.();
+                } catch (error) {
+                    console.error('[lorebook-atlas] post-scan hook failed:', error);
+                }
+            };
+
+            const step = () => {
                 if (mine !== generation) return;
-                if (decorate(node)) decorated += 1;
-            }
+                const end = Math.min(i + chunk, entries.length);
+                for (; i < end; i += 1) {
+                    if (decorate(entries[i])) decorated += 1;
+                }
+                if (i < entries.length) {
+                    requestAnimationFrame(step);
+                    return;
+                }
+                finish();
+            };
 
-            if (entries.length && !decorated) {
-                console.warn('[lorebook-atlas] World Info entries found but no uid could be read; markup may have changed', wi.diagnostics());
-            }
-
-            try {
-                onAfterScan?.();
-            } catch (error) {
-                console.error('[lorebook-atlas] post-scan hook failed:', error);
-            }
+            step();
         };
         if (immediate || typeof requestIdleCallback !== 'function') run();
-        else requestIdleCallback(run, { timeout: 100 });
+        else requestIdleCallback(run, { timeout: 150 });
     }
 
     return {
@@ -387,30 +406,18 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
 
             scan(true);
             observer?.disconnect();
-            let mutationScan = null;
+            let mutationScan = false;
             observer = new MutationObserver(() => {
-                if (mutationScan === 'raf') {
-                    mutationScan = 'idle';
-                    return;
-                }
-                if (mutationScan === 'idle') return;
-                mutationScan = 'raf';
+                if (mutationScan) return;
+                mutationScan = true;
                 requestAnimationFrame(() => {
-                    const again = mutationScan === 'idle';
-                    mutationScan = null;
+                    mutationScan = false;
                     scan(true);
-                    if (!again) return;
-                    mutationScan = 'idle';
-                    const run = () => {
-                        if (mutationScan !== 'idle') return;
-                        mutationScan = null;
-                        scan(true);
-                    };
-                    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 100 });
-                    else queueMicrotask(run);
                 });
             });
-            observer.observe(list, { childList: true, subtree: true });
+            // Direct children only: subtree:true fires on every drawer field and freezes
+            // the page when SillyTavern rebuilds a large lorebook.
+            observer.observe(list, { childList: true });
         },
 
         stop() {
@@ -432,13 +439,16 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         scan,
 
         setCrops(next) {
+            cropBook = wi.bookName();
             crops = Object.create(null);
             for (const [uid, crop] of Object.entries(next || {})) crops[String(uid)] = normalizeCrop(crop);
             for (const chrome of document.querySelectorAll(`.${CHROME_CLASS}`)) {
                 const uid = chrome.dataset.lbaUid;
                 if (!uid) continue;
+                const signature = `${imageFor(uid)?.id ?? ''}:${cropSig(cropFor(uid))}`;
+                if (chrome.dataset.lbaImage === signature) continue;
                 paintThumb(chrome.querySelector('.lba-entry-thumb'), uid);
-                chrome.dataset.lbaImage = `${imageFor(uid)?.id ?? ''}:${cropSig(cropFor(uid))}`;
+                chrome.dataset.lbaImage = signature;
             }
         },
 

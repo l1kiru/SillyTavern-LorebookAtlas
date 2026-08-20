@@ -123,7 +123,9 @@ export function createWiFilter({ wi, io, onExplore }) {
     function applyViaHost() {
         // The value itself is unused by the function above — it reads `selected` — but
         // setting it is what triggers onDataChanged, and it keeps hasAnyFilter() honest.
-        host.setFilterData(FILTER_KEY, selected === ALL ? '' : selected);
+        const value = selected === ALL ? '' : selected;
+        if (typeof host.getFilterData === 'function' && host.getFilterData(FILTER_KEY) === value) return;
+        host.setFilterData(FILTER_KEY, value);
     }
 
     // ---------------------------------------------------------------- fallback mode
