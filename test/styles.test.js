@@ -148,6 +148,10 @@ test('World Info entry thumbs stay inside the collapsed header row', () => {
     assert.ok(css.includes(LAYOUT_PRESETS.normal.iconMobile));
     assert.match(css, /@media\s*\(max-width:\s*768px\)/);
     assert.match(css, /@media\s*\(max-width:\s*480px\)/);
+    assert.match(css, /\.lba-entry-thumb[^{]*\{[^}]*padding:\s*2%/);
+    // Collapsed phone rows hide ST's position/depth/order until the drawer opens.
+    assert.match(css, /@media\s*\(max-width:\s*700px\)/);
+    assert.match(css, /WIEnteryHeaderControls/);
 });
 
 test('layout preset falls back to normal and writes the clamp variables', () => {

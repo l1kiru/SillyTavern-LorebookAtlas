@@ -97,7 +97,16 @@ export const STRINGS = Object.freeze({
 
     // World Info entries
     'entry.add': 'Add image',
-    'entry.replace': 'Entry image — click to replace',
+    'entry.replace': 'Entry image — click to replace or crop',
+    'entry.menuReplace': 'Replace image',
+    'entry.crop': 'Crop',
+    'entry.cropHelp': 'X/Y moves the frame, Zoom crops tighter.',
+    'entry.cropX': 'X',
+    'entry.cropY': 'Y',
+    'entry.cropZoom': 'Zoom',
+    'entry.cropApply': 'Apply',
+    'entry.cropReset': 'Reset',
+    'entry.cropCancel': 'Cancel',
     'entry.openBookFirst': 'Open a lorebook first',
     'entry.added': 'Image added',
     'entry.deduplicated': 'Image was already in storage — reused',

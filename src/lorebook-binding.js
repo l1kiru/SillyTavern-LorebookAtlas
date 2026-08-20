@@ -91,13 +91,71 @@ export function ensureGroupId(book, strategy = STRATEGY.ENTRY) {
 export function writeEntryImage(entry, image) {
     if (!entry || typeof entry !== 'object') throw new Error('Entry object expected');
     entry.extensions = entry.extensions || {};
+    const prev = entry.extensions[BINDING_KEY] || {};
+    const same = prev.imageId === image.id && prev.sha256 === image.sha256;
     entry.extensions[BINDING_KEY] = {
-        ...entry.extensions[BINDING_KEY],
+        ...prev,
         imageId: image.id,
         sha256: image.sha256,
         variants: { ...image.variants },
     };
+    // A different file needs a fresh frame; the same (deduplicated) file keeps it.
+    if (!same) delete entry.extensions[BINDING_KEY].crop;
     return entry;
+}
+
+// ---------------------------------------------------------------------------
+// Per-entry thumbnail crop (CSS only — no extra files)
+// ---------------------------------------------------------------------------
+
+export const CROP_DEFAULT = Object.freeze({ x: 0.5, y: 0.5, zoom: 1 });
+
+function clamp(value, min, max, fallback) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
+export function normalizeCrop(crop) {
+    return {
+        x: clamp(crop?.x, 0, 1, CROP_DEFAULT.x),
+        y: clamp(crop?.y, 0, 1, CROP_DEFAULT.y),
+        zoom: clamp(crop?.zoom, 1, 4, CROP_DEFAULT.zoom),
+    };
+}
+
+export function cropIsDefault(crop) {
+    const next = normalizeCrop(crop);
+    return next.x === CROP_DEFAULT.x && next.y === CROP_DEFAULT.y && next.zoom === CROP_DEFAULT.zoom;
+}
+
+export function readEntryCrop(entry) {
+    return normalizeCrop(entry?.extensions?.[BINDING_KEY]?.crop);
+}
+
+export function writeEntryCrop(entry, crop) {
+    if (!entry || typeof entry !== 'object') throw new Error('Entry object expected');
+    entry.extensions = entry.extensions || {};
+    entry.extensions[BINDING_KEY] = entry.extensions[BINDING_KEY] || {};
+    const next = normalizeCrop(crop);
+    if (cropIsDefault(next)) {
+        delete entry.extensions[BINDING_KEY].crop;
+        if (!Object.keys(entry.extensions[BINDING_KEY]).length) delete entry.extensions[BINDING_KEY];
+    } else {
+        entry.extensions[BINDING_KEY].crop = next;
+    }
+    return entry;
+}
+
+/** Maps a crop onto an <img> that already uses object-fit: cover. */
+export function applyCropStyle(node, crop) {
+    if (!node?.style) return node;
+    const next = normalizeCrop(crop);
+    const x = `${(next.x * 100).toFixed(2)}%`;
+    const y = `${(next.y * 100).toFixed(2)}%`;
+    node.style.objectPosition = `${x} ${y}`;
+    node.style.transformOrigin = `${x} ${y}`;
+    node.style.transform = next.zoom === CROP_DEFAULT.zoom ? '' : `scale(${next.zoom})`;
+    return node;
 }
 
 // ---------------------------------------------------------------------------

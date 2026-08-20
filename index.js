@@ -12,7 +12,7 @@ import { createStorage } from './src/storage.js';
 import { resumePendingCleanup } from './src/cleanup.js';
 import { reconcileGroups } from './src/groups.js';
 import { T } from './src/i18n.js';
-import { discoverBindings, ensureGroupId, writeEntryImage, readGroupId, entriesWithLists, STRATEGY } from './src/lorebook-binding.js';
+import { discoverBindings, ensureGroupId, writeEntryImage, writeEntryCrop, readEntryCrop, readGroupId, entriesWithLists, STRATEGY } from './src/lorebook-binding.js';
 import { buildArchive, readArchive, estimateArchiveBytes } from './src/archive.js';
 import { applyRestore } from './src/restore.js';
 import { reconstructMissingLists } from './src/lists.js';
@@ -244,6 +244,7 @@ async function attachImageToEntry({ entryUid, bookName }) {
         if (entry) {
             writeEntryImage(entry, image);
             await saveBook(bookName, book);
+            entryButtons?.setCrop(entryUid, readEntryCrop(entry));
         }
 
         entryButtons?.refresh();
@@ -251,6 +252,40 @@ async function attachImageToEntry({ entryUid, bookName }) {
         notify(deduplicated ? T('entry.deduplicated') : T('entry.added'), 'success');
     } catch (error) {
         console.error(`[${MODULE_NAME}] failed to add image:`, error);
+        notify(error.message, 'error');
+    }
+}
+
+function cropsFromBook(book) {
+    const next = {};
+    for (const entry of Object.values(book?.entries || {})) {
+        if (entry?.uid == null) continue;
+        next[String(entry.uid)] = readEntryCrop(entry);
+    }
+    return next;
+}
+
+async function loadCropsForOpenBook() {
+    const name = currentBookName();
+    if (!name) return;
+    const book = await loadBookCached(name);
+    if (book) entryButtons?.setCrops(cropsFromBook(book));
+}
+
+async function saveEntryCrop({ entryUid, bookName, crop }) {
+    if (!bookName) {
+        notify(T('entry.openBookFirst'), 'warning');
+        return;
+    }
+    try {
+        const book = await loadBookCached(bookName, { force: true });
+        const entry = Object.values(book?.entries || {}).find(e => String(e.uid) === String(entryUid));
+        if (!entry) return;
+        writeEntryCrop(entry, crop);
+        await saveBook(bookName, book);
+        entryButtons?.setCrop(entryUid, readEntryCrop(entry));
+    } catch (error) {
+        console.error(`[${MODULE_NAME}] failed to save crop:`, error);
         notify(error.message, 'error');
     }
 }
@@ -586,11 +621,13 @@ export function onActivate() {
             entryButtons = createEntryButtons({
                 storage: store,
                 onAttach: attachImageToEntry,
+                onCrop: saveEntryCrop,
                 onOpen: () => gallery.open(),
                 // A rescan renders rows unfiltered; re-apply before the user sees them.
                 onAfterScan: () => {
                     wiFilter?.mount();
                     wiFilter?.refresh();
+                    void loadCropsForOpenBook();
                 },
             });
 

@@ -62,7 +62,7 @@ export const WI_SELECTORS = Object.freeze({
 });
 
 /** Anything of ours that a rescan must not mistake for SillyTavern markup. */
-const OWN_MARKUP = '.lba-entry-chrome, .lba-explorer, .lba-gallery, .lba-settings';
+const OWN_MARKUP = '.lba-entry-chrome, .lba-explorer, .lba-gallery, .lba-settings, .lba-crop, .lba-thumb-menu';
 
 export function firstMatching(root, selectors) {
     for (const selector of selectors) {

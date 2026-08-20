@@ -22,7 +22,9 @@
 .lba-explorer,
 .lba-restore,
 .lba-entry-chrome,
-.lba-detail {
+.lba-detail,
+.lba-crop,
+.lba-thumb-menu {
     --lba-border: rgba(127, 127, 127, 0.32);
     --lba-border: color-mix(in srgb, currentColor 24%, transparent);
 
@@ -285,6 +287,8 @@
     display: block;
     width: 100%;
     height: 100%;
+    padding: 2%;
+    box-sizing: border-box;
     object-fit: cover;
     border-radius: var(--lba-radius);
     background: var(--lba-surface);
@@ -296,6 +300,91 @@
     margin: 0;
     border: none;
     background: none;
+    overflow: hidden;
+}
+
+.lba-thumb-menu {
+    position: fixed;
+    z-index: 10040;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--lba-border);
+    border-radius: var(--lba-radius);
+    background: var(--lba-surface-active);
+}
+
+.lba-crop {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--lba-overlay);
+}
+
+.lba-crop__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    min-width: min(280px, 90vw);
+    border: 1px solid var(--lba-border);
+    border-radius: var(--lba-radius);
+    background: var(--lba-surface-active);
+}
+
+.lba-crop__preview {
+    width: min(280px, 70vw);
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: var(--lba-radius);
+    background: var(--lba-surface);
+}
+
+.lba-crop__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lba-crop__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lba-crop__row span {
+    flex: 0 0 4.5em;
+    font-size: 0.85em;
+}
+
+.lba-crop__row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.lba-crop__row output {
+    flex: 0 0 3em;
+    text-align: right;
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.lba-crop__actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.lba-crop__actions .menu_button,
+.lba-thumb-menu .menu_button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: fit-content;
 }
 
 @media (max-width: 768px) {
@@ -307,6 +396,112 @@
 @media (max-width: 480px) {
     .lba-entry-chrome {
         --lba-entry-icon-size: var(--lba-entry-icon-mobile);
+    }
+}
+
+/*
+ * Phone-first World Info rows, same layout Lorebook Images used: collapsed
+ * is toggle | kill | icon | title; position/depth/order wait until expanded.
+ * :has(.inline-drawer-icon.up) is SillyTavern's own expanded marker.
+ */
+.world_entry.lba-entry-enhanced .world_entry_thin_controls {
+    flex-wrap: nowrap;
+    align-items: center;
+    min-width: 0;
+}
+
+.world_entry.lba-entry-enhanced .WIEntryTitleAndStatus,
+.world_entry.lba-entry-enhanced .WIEntryTitleAndStatus .flex-container,
+.world_entry.lba-entry-enhanced textarea[name="comment"] {
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .world_entry.lba-entry-enhanced .inline-drawer-header {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .world_entry.lba-entry-enhanced .world_entry_thin_controls {
+        flex: 1 1 100%;
+        min-width: 0;
+        max-width: 100%;
+        gap: 4px;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls {
+        display: grid;
+        grid-template-columns: auto auto auto minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .inline-drawer-toggle {
+        grid-column: 1;
+        justify-self: center;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .killSwitch {
+        grid-column: 2;
+        justify-self: center;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .lba-entry-chrome {
+        grid-column: 3;
+        justify-self: center;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .flex-container.alignitemscenter.wide100p {
+        grid-column: 4;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .WIEnteryHeaderControls {
+        display: none;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .WIEntryTitleAndStatus {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) textarea[name="comment"] {
+        min-height: 32px;
+        height: 32px;
+        max-height: 32px;
+        resize: none;
+        overflow: hidden;
+        line-height: 1.25;
+    }
+
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .world_entry_thin_controls {
+        flex-wrap: wrap;
+    }
+
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .world_entry_thin_controls > .flex-container.alignitemscenter.wide100p {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .WIEnteryHeaderControls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+        width: 100%;
+    }
+
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .WIEnteryHeaderControls .world_entry_form_control {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .WIEnteryHeaderControls .text_pole,
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .WIEnteryHeaderControls select,
+    .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .WIEnteryHeaderControls input {
+        max-width: 100%;
+        min-width: 0;
     }
 }
 

@@ -16,20 +16,155 @@
 import { el, icon } from './dom.js';
 import { T } from '../i18n.js';
 import { createWiAdapter, bindInteractionBoundary } from './wi-adapter.js';
+import { CROP_DEFAULT, normalizeCrop, applyCropStyle } from '../lorebook-binding.js';
 
 const CHROME_CLASS = 'lba-entry-chrome';
+const MENU_CLASS = 'lba-thumb-menu';
+const CROP_CLASS = 'lba-crop';
 
-export function createEntryButtons({ storage, onAttach, onOpen, onAfterScan }) {
+function cropSig(crop) {
+    const next = normalizeCrop(crop);
+    return `${next.x}:${next.y}:${next.zoom}`;
+}
+
+function closeLayer(className) {
+    for (const node of document.querySelectorAll(`.${className}`)) {
+        node._lbaDismiss && document.removeEventListener('pointerdown', node._lbaDismiss, true);
+        node.remove();
+    }
+}
+
+function slider(label, min, max, step, value) {
+    const output = el('output', { text: String(value) });
+    const input = el('input', {
+        type: 'range',
+        min: String(min),
+        max: String(max),
+        step: String(step),
+        value: String(value),
+        on: { input: () => { output.textContent = input.value; } },
+    });
+    return { input, output, row: el('label', { class: 'lba-crop__row' }, [el('span', { text: label }), input, output]) };
+}
+
+export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterScan }) {
     const wi = createWiAdapter();
     let observer = null;
     let bootstrap = null;
     let generation = 0;
+    let crops = Object.create(null);
 
     function imageFor(uid) {
         for (const image of Object.values(storage.manifest.images || {})) {
             if ((image.refs || []).some(ref => String(ref.entryUid) === String(uid))) return image;
         }
         return null;
+    }
+
+    function cropFor(uid) {
+        return crops[String(uid)] || CROP_DEFAULT;
+    }
+
+    function paintThumb(img, uid) {
+        if (img) applyCropStyle(img, cropFor(uid));
+        return img;
+    }
+
+    function openCropEditor(uid, image) {
+        closeLayer(MENU_CLASS);
+        closeLayer(CROP_CLASS);
+        const src = `/${image.variants.preview || image.variants.original}`;
+        let working = normalizeCrop(cropFor(uid));
+        const preview = el('img', { class: 'lba-entry-thumb', src, alt: '' });
+        applyCropStyle(preview, working);
+
+        const x = slider(T('entry.cropX'), 0, 100, 1, Math.round(working.x * 100));
+        const y = slider(T('entry.cropY'), 0, 100, 1, Math.round(working.y * 100));
+        const zoom = slider(T('entry.cropZoom'), 1, 4, 0.01, working.zoom.toFixed(2));
+
+        const sync = () => {
+            working = normalizeCrop({
+                x: Number(x.input.value) / 100,
+                y: Number(y.input.value) / 100,
+                zoom: Number(zoom.input.value),
+            });
+            applyCropStyle(preview, working);
+        };
+        for (const input of [x.input, y.input, zoom.input]) input.addEventListener('input', sync);
+
+        const overlay = el('div', { class: CROP_CLASS }, [
+            el('div', { class: 'lba-crop__panel' }, [
+                el('div', { class: 'lba-crop__preview' }, [preview]),
+                el('small', { class: 'lba-hint', text: T('entry.cropHelp') }),
+                x.row, y.row, zoom.row,
+                el('div', { class: 'lba-crop__actions' }, [
+                    el('div', {
+                        class: 'menu_button',
+                        text: T('entry.cropReset'),
+                        on: {
+                            click: () => {
+                                working = { ...CROP_DEFAULT };
+                                x.input.value = '50';
+                                y.input.value = '50';
+                                zoom.input.value = '1';
+                                x.output.textContent = '50';
+                                y.output.textContent = '50';
+                                zoom.output.textContent = '1';
+                                applyCropStyle(preview, working);
+                            },
+                        },
+                    }),
+                    el('div', { class: 'menu_button', text: T('entry.cropCancel'), on: { click: () => closeLayer(CROP_CLASS) } }),
+                    el('div', {
+                        class: 'menu_button',
+                        text: T('entry.cropApply'),
+                        on: {
+                            click: () => {
+                                closeLayer(CROP_CLASS);
+                                void onCrop?.({ entryUid: uid, bookName: wi.bookName(), crop: working });
+                            },
+                        },
+                    }),
+                ]),
+            ]),
+        ]);
+        bindInteractionBoundary(overlay);
+        overlay.addEventListener('pointerdown', event => {
+            if (event.target === overlay) closeLayer(CROP_CLASS);
+        });
+        document.body.append(overlay);
+    }
+
+    function openThumbMenu(anchor, uid, image) {
+        closeLayer(MENU_CLASS);
+        const menu = el('div', { class: MENU_CLASS }, [
+            el('div', {
+                class: 'menu_button',
+                text: T('entry.menuReplace'),
+                on: {
+                    click: () => {
+                        closeLayer(MENU_CLASS);
+                        void onAttach({ entryUid: uid, bookName: wi.bookName(), current: image });
+                    },
+                },
+            }),
+            el('div', {
+                class: 'menu_button',
+                text: T('entry.crop'),
+                on: { click: () => openCropEditor(uid, image) },
+            }),
+        ]);
+        bindInteractionBoundary(menu);
+        const rect = anchor.getBoundingClientRect();
+        menu.style.left = `${Math.round(rect.left)}px`;
+        menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+        const dismiss = event => {
+            if (menu.contains(event.target)) return;
+            closeLayer(MENU_CLASS);
+        };
+        menu._lbaDismiss = dismiss;
+        document.addEventListener('pointerdown', dismiss, true);
+        document.body.append(menu);
     }
 
     function buildChrome(entryNode, uid) {
@@ -42,12 +177,13 @@ export function createEntryButtons({ storage, onAttach, onOpen, onAfterScan }) {
                 click: event => {
                     event.preventDefault();
                     event.stopPropagation();
-                    void onAttach({ entryUid: uid, bookName: wi.bookName(), current: image });
+                    if (image) openThumbMenu(event.currentTarget, uid, image);
+                    else void onAttach({ entryUid: uid, bookName: wi.bookName(), current: image });
                 },
             },
         }, [
             image
-                ? el('img', { class: 'lba-entry-thumb', src: `/${image.variants.preview || image.variants.original}`, alt: '' })
+                ? paintThumb(el('img', { class: 'lba-entry-thumb', src: `/${image.variants.preview || image.variants.original}`, alt: '' }), uid)
                 : icon('fa-solid fa-image'),
         ]);
 
@@ -62,22 +198,26 @@ export function createEntryButtons({ storage, onAttach, onOpen, onAfterScan }) {
         if (!uid) return false;
 
         const existing = entryNode.querySelector(`:scope .${CHROME_CLASS}`);
+        const signature = `${imageFor(uid)?.id ?? ''}:${cropSig(cropFor(uid))}`;
         if (existing) {
             // Already decorated. Refresh only if the thumbnail is out of date, so a rescan
             // does not churn the DOM on every mutation.
-            if (existing.dataset.lbaImage === String(imageFor(uid)?.id ?? '')) return true;
+            if (existing.dataset.lbaImage === signature) return true;
             existing.remove();
         }
 
         const chrome = buildChrome(entryNode, uid);
-        chrome.dataset.lbaImage = String(imageFor(uid)?.id ?? '');
+        chrome.dataset.lbaUid = String(uid);
+        chrome.dataset.lbaImage = signature;
 
         const target = wi.controlsTarget(entryNode);
-        // Sit after the drawer toggle where one exists, so the controls do not land in
-        // front of SillyTavern's own affordances.
+        // After the kill-switch so the mobile grid is toggle | kill | icon | title.
+        const killSwitch = target.querySelector?.(':scope > .killSwitch')
+            ?? target.querySelector?.('.killSwitch');
         const toggle = target.querySelector?.(':scope > .inline-drawer-toggle')
             ?? target.querySelector?.('.inline-drawer-toggle');
-        if (toggle?.parentElement === target) toggle.insertAdjacentElement('afterend', chrome);
+        if (killSwitch?.parentElement === target) killSwitch.insertAdjacentElement('afterend', chrome);
+        else if (toggle?.parentElement === target) toggle.insertAdjacentElement('afterend', chrome);
         else target.prepend(chrome);
 
         entryNode.classList.add('lba-entry-enhanced');
@@ -152,5 +292,20 @@ export function createEntryButtons({ storage, onAttach, onOpen, onAfterScan }) {
         bookName: () => wi.bookName(),
         openGallery: onOpen,
         scan,
+
+        setCrops(next) {
+            crops = Object.create(null);
+            for (const [uid, crop] of Object.entries(next || {})) crops[String(uid)] = normalizeCrop(crop);
+            for (const chrome of document.querySelectorAll(`.${CHROME_CLASS}`)) {
+                const uid = chrome.dataset.lbaUid;
+                if (!uid) continue;
+                paintThumb(chrome.querySelector('.lba-entry-thumb'), uid);
+                chrome.dataset.lbaImage = `${imageFor(uid)?.id ?? ''}:${cropSig(cropFor(uid))}`;
+            }
+        },
+
+        setCrop(uid, crop) {
+            this.setCrops({ ...crops, [String(uid)]: crop });
+        },
     };
 }
