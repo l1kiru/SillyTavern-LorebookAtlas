@@ -40,6 +40,14 @@ function cropHost() {
     return document.getElementById('world_popup') || document.body;
 }
 
+/** Absolute inside the popup (so it stacks above the entry list); pin to the visible scrollport. */
+function mountCropOverlay(overlay) {
+    const host = cropHost();
+    host.append(overlay);
+    overlay.style.top = `${host.scrollTop}px`;
+    overlay.style.height = `${host.clientHeight}px`;
+}
+
 function slider(label, min, max, step, value) {
     const output = el('output', { text: String(value) });
     const input = el('input', {
@@ -138,7 +146,7 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         overlay.addEventListener('pointerdown', event => {
             if (event.target === overlay) closeLayer(CROP_CLASS);
         });
-        cropHost().append(overlay);
+        mountCropOverlay(overlay);
     }
 
     function openThumbMenu(anchor, uid, image) {

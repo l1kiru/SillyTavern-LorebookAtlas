@@ -162,11 +162,14 @@ test('the explorer fills the ST popup instead of forcing a 960px width', () => {
     assert.match(css, /grid-template-rows:\s*minmax\(8rem,\s*30%\)/);
 });
 
-test('crop overlay is viewport-fixed so it does not ride World Info scroll', () => {
-    // Mobile #world_popup is overflow-y:auto; absolute inset:0 pins to the top of
-    // the scrolled content, so only the bottom of the crop UI is visible.
-    assert.match(css, /\.lba-crop\s*\{[^}]*position:\s*fixed/);
-    assert.doesNotMatch(css, /#world_popup:has\(>\s*\.lba-crop\)/);
+test('crop overlay stays in the World Info popup stacking context', () => {
+    // position:fixed paints under mobile backdrop-filter; absolute inside the popup
+    // stays above the entry list. JS pins top/height to the visible scrollport.
+    assert.match(css, /\.lba-crop\s*\{[^}]*position:\s*absolute/);
+    assert.match(css, /#world_popup:has\(>\s*\.lba-crop\)/);
+    const entryButton = sources.find(s => s.file.includes('entry-button')).text;
+    assert.match(entryButton, /host\.scrollTop/);
+    assert.match(entryButton, /host\.clientHeight/);
 });
 
 test('layout preset falls back to normal and writes the clamp variables', () => {
