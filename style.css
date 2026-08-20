@@ -433,22 +433,34 @@
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls {
         display: grid;
         grid-template-columns: auto auto auto minmax(0, 1fr);
-        align-items: center;
+        align-items: stretch;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .inline-drawer-toggle {
         grid-column: 1;
+        align-self: center;
         justify-self: center;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .killSwitch {
         grid-column: 2;
+        align-self: center;
         justify-self: center;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .lba-entry-chrome {
         grid-column: 3;
-        justify-self: center;
+        align-self: stretch;
+        align-items: stretch;
+        height: auto;
+    }
+
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .menu_button.lba-entry-button {
+        height: 100%;
+        width: auto;
+        min-width: unset;
+        min-height: unset;
+        aspect-ratio: 1;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .flex-container.alignitemscenter.wide100p {
@@ -467,10 +479,16 @@
         min-width: 0;
     }
 
+    .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .WIEntryTitleAndStatus .text_pole {
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) textarea[name="comment"] {
-        min-height: 32px;
-        height: 32px;
-        max-height: 32px;
+        field-sizing: content;
+        height: auto;
+        min-height: calc(1.25em + 6px);
+        max-height: calc(2.5em + 6px);
         resize: none;
         overflow: hidden;
         line-height: 1.25;

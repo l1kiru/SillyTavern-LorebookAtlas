@@ -152,6 +152,7 @@ test('World Info entry thumbs stay inside the collapsed header row', () => {
     // Collapsed phone rows hide ST's position/depth/order until the drawer opens.
     assert.match(css, /@media\s*\(max-width:\s*700px\)/);
     assert.match(css, /WIEnteryHeaderControls/);
+    assert.match(css, /field-sizing:\s*content/);
 });
 
 test('layout preset falls back to normal and writes the clamp variables', () => {
