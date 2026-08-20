@@ -830,6 +830,19 @@
     font-style: italic;
 }
 
+.lba-chip--add {
+    cursor: pointer;
+}
+
+.lba-membership {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: min(60vh, 24rem);
+    overflow-y: auto;
+    text-align: start;
+}
+
 .lba-chip__remove {
     cursor: pointer;
     opacity: 0.6;

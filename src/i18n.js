@@ -121,6 +121,8 @@ export const STRINGS = Object.freeze({
     'list.snapshotLocal': 'Local',
     'list.snapshotRestored': 'Restored {date}',
     'list.create': 'New list',
+    'list.addTo': 'Add to lists',
+    'list.noLists': 'Create a list first',
     'list.rename': 'Rename',
     'list.delete': 'Delete list',
     'list.deleteChildren': 'Delete nested lists too',

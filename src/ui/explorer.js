@@ -235,6 +235,43 @@ export function createExplorer({ storage, context, io }) {
 
     // ---------------------------------------------------------------- entries
 
+    async function editMembership(item) {
+        const current = new Set(readEntryLists(item.entry).filter(id => lists[id] && !isComputed(id)));
+        const boxes = [];
+        const body = el('div', { class: 'lba-membership' }, [
+            el('p', { text: item.entry.comment || `#${item.uid}` }),
+        ]);
+
+        const walk = (nodes, depth) => {
+            for (const node of nodes) {
+                const box = el('input', {
+                    type: 'checkbox',
+                    checked: current.has(node.list.id),
+                    dataset: { listId: node.list.id },
+                });
+                boxes.push(box);
+                body.append(el('label', { class: 'checkbox_label' }, [
+                    box,
+                    el('span', { text: `${'— '.repeat(depth)}${listLabel(node.list)}` }),
+                ]));
+                walk(node.children, depth + 1);
+            }
+        };
+        walk(buildTree(lists), 0);
+
+        if (!boxes.length) {
+            notify(T('list.noLists'), 'info');
+            return;
+        }
+
+        const answer = await context.callGenericPopup(body, context.POPUP_TYPE.CONFIRM);
+        if (answer !== context.POPUP_RESULT.AFFIRMATIVE) return;
+
+        writeEntryLists(item.entry, boxes.filter(box => box.checked).map(box => box.dataset.listId));
+        await persist();
+        render();
+    }
+
     function renderEntry(item) {
         const image = imageFor(item.uid);
         const memberships = [...item.lists, ...computedListsFor({ entry: item.entry, image, membership: item.lists })];
@@ -257,7 +294,19 @@ export function createExplorer({ storage, context, io }) {
             el('div', { class: 'lba-entry__body' }, [
                 el('div', { class: 'lba-entry__title', text: item.entry.comment || `#${item.uid}` }),
                 el('div', { class: 'lba-entry__keys', text: (item.entry.key || []).join(', ') }),
-                el('div', { class: 'lba-entry__chips' }, memberships.map(id => renderChip(item, id))),
+                el('div', { class: 'lba-entry__chips' }, [
+                    ...memberships.map(id => renderChip(item, id)),
+                    el('span', {
+                        class: 'lba-chip lba-chip--add',
+                        title: T('list.addTo'),
+                        on: {
+                            click: event => {
+                                event.stopPropagation();
+                                void editMembership(item);
+                            },
+                        },
+                    }, [icon('fa-solid fa-plus')]),
+                ]),
             ]),
         ]);
     }

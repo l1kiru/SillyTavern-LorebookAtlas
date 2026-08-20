@@ -94,6 +94,8 @@
     "lba.list.snapshotLocal": "Локальные",
     "lba.list.snapshotRestored": "Восстановлено {date}",
     "lba.list.create": "Новый список",
+    "lba.list.addTo": "Добавить в списки",
+    "lba.list.noLists": "Сначала создайте список",
     "lba.list.rename": "Переименовать",
     "lba.list.delete": "Удалить список",
     "lba.list.deleteChildren": "Удалить и вложенные списки",
