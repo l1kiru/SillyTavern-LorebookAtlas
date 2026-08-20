@@ -1,0 +1,11 @@
+{
+    "name": "sillytavern-lorebook-atlas",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Lorebook Atlas — a SillyTavern extension. Dev-only package.json: makes the sources loadable by node:test as ESM. SillyTavern itself reads manifest.json, not this file.",
+    "license": "MIT",
+    "scripts": {
+        "test": "node --test test/*.test.js"
+    }
+}

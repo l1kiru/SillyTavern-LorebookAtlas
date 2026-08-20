@@ -1,0 +1,21 @@
+{
+    "display_name": "Lorebook Atlas",
+    "loading_order": 100,
+    "js": "index.js",
+    "css": "style.css",
+    "author": "l1kiru",
+    "version": "1.0.0",
+    "homePage": "https://github.com/l1kiru/SillyTavern-LorebookAtlas",
+    "auto_update": true,
+    "minimum_client_version": "1.18.0",
+    "i18n": {
+        "ru-ru": "i18n/ru-ru.json"
+    },
+    "hooks": {
+        "install": "onInstall",
+        "update": "onUpdate",
+        "delete": "onDelete",
+        "clean": "onClean",
+        "activate": "onActivate"
+    }
+}

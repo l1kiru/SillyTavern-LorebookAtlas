@@ -1,0 +1,545 @@
+/*
+ * Lorebook Atlas — styles.
+ *
+ * Everything visual goes through the --lba-* layer defined below. Two reasons:
+ *
+ *  - SillyTavern themes are fully user-editable, so a raw var(--SmartThemeBorderColor)
+ *    guarantees nothing. Its stock value is rgba(0,0,0,0.5) — invisible on a dark theme,
+ *    which is where most users are.
+ *  - Hardcoded rgba(255,255,255,...) silently assumes a dark background and disappears on
+ *    a light theme.
+ *
+ * The layer solves both by deriving from `currentColor`, which is whatever the active
+ * theme set as text colour. A surface mixed from currentColor is always visible against
+ * the background it sits on, in any theme, without guessing which one is active.
+ *
+ * Each variable is declared twice: a plain fallback first, then the color-mix version.
+ * Browsers that do not know color-mix keep the first, everyone else takes the second.
+ */
+
+.lba-settings,
+.lba-gallery,
+.lba-explorer,
+.lba-restore,
+.lba-entry-chrome,
+.lba-detail {
+    --lba-border: rgba(127, 127, 127, 0.32);
+    --lba-border: color-mix(in srgb, currentColor 24%, transparent);
+
+    --lba-border-soft: rgba(127, 127, 127, 0.18);
+    --lba-border-soft: color-mix(in srgb, currentColor 14%, transparent);
+
+    --lba-surface: rgba(127, 127, 127, 0.10);
+    --lba-surface: color-mix(in srgb, currentColor 9%, transparent);
+
+    --lba-surface-hover: rgba(127, 127, 127, 0.16);
+    --lba-surface-hover: color-mix(in srgb, currentColor 14%, transparent);
+
+    --lba-surface-active: rgba(127, 127, 127, 0.24);
+    --lba-surface-active: color-mix(in srgb, currentColor 22%, transparent);
+
+    --lba-overlay: rgba(0, 0, 0, 0.5);
+    --lba-overlay: var(--black50a, rgba(0, 0, 0, 0.5));
+
+    /* Emphasis, for the lock outline and progress. --golden is a real ST variable. */
+    --lba-accent: var(--golden, rgb(248, 211, 0));
+
+    /*
+     * Deliberately not --warning: in SillyTavern that is rgba(255,0,0,0.9), i.e. pure red.
+     * An orphaned lorebook is a notice, not an emergency, so it gets its own amber.
+     */
+    --lba-attention: #d09a3c;
+
+    /* Destructive actions do use ST's red, so they match the rest of the app. */
+    --lba-danger: var(--warning, rgba(255, 0, 0, 0.9));
+
+    --lba-radius: 6px;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+/*
+ * SillyTavern has .menu_button, but neither .menu_button_icon nor .redWarningBG — both
+ * were assumed and neither exists, so icon buttons kept text padding and destructive
+ * buttons looked ordinary. These two build on the real .menu_button instead.
+ */
+.menu_button.lba-button--icon {
+    padding: 2px 6px;
+    min-width: unset;
+    line-height: 1;
+}
+
+.menu_button.lba-button--danger {
+    color: var(--lba-danger);
+    border-color: var(--lba-danger);
+}
+
+.menu_button.lba-button--danger:hover {
+    background-color: var(--lba-danger);
+    color: var(--SmartThemeBlurTintColor, #000);
+}
+
+.lba-group {
+    border: 1px solid var(--lba-border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.lba-group__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.lba-group__name {
+    flex: 1;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lba-group__meta {
+    opacity: 0.7;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+/* Orphaned lorebooks and the system group read as secondary. */
+.lba-group--orphaned .lba-group__name,
+.lba-group--system .lba-group__name {
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.lba-group__body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 6px;
+    padding: 8px 10px;
+}
+
+.lba-group[aria-expanded="false"] .lba-group__body {
+    display: none;
+}
+
+.lba-tile {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--lba-surface);
+}
+
+/*
+ * The icon is derived from the preview here rather than being stored as a third file.
+ * One variant fewer means a third off both the disk footprint and the teardown cost,
+ * which matters because the delete hook only gets a 5 second budget.
+ */
+.lba-tile__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.lba-tile__lock {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: var(--lba-overlay);
+    font-size: 0.75em;
+    line-height: 1;
+}
+
+.lba-tile--locked {
+    outline: 2px solid var(--lba-accent);
+    outline-offset: -2px;
+}
+
+.lba-empty {
+    padding: 10px;
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.lba-progress {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--lba-surface);
+    overflow: hidden;
+}
+
+.lba-progress__bar {
+    height: 100%;
+    background: var(--lba-accent);
+    transition: width 0.2s ease;
+}
+
+/* ------------------------------------------------------------------ gallery shell */
+
+.lba-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(900px, 90vw);
+}
+
+.lba-toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.lba-toolbar input[type="search"] {
+    flex: 1;
+    min-width: 160px;
+}
+
+.lba-totals {
+    opacity: 0.7;
+    font-size: 0.85em;
+    text-align: right;
+}
+
+.lba-group__actions {
+    display: flex;
+    gap: 4px;
+}
+
+.lba-badge {
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    background: var(--lba-surface);
+    white-space: nowrap;
+}
+
+.lba-badge--orphan {
+    background: var(--lba-attention);
+}
+
+/* ------------------------------------------------------------------ image detail */
+
+.lba-detail {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.lba-detail__img {
+    max-width: min(420px, 60vw);
+    max-height: 50vh;
+    border-radius: 4px;
+}
+
+.lba-detail__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9em;
+}
+
+/* ------------------------------------------------------------------ world info entry */
+
+.lba-entry-button {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+}
+
+.lba-entry-thumb {
+    width: 20px;
+    height: 20px;
+    object-fit: cover;
+    border-radius: 3px;
+    display: block;
+}
+
+.lba-entry-button--set {
+    padding: 2px;
+}
+
+/* ------------------------------------------------------------------ settings panel */
+
+.lba-summary {
+    opacity: 0.8;
+    font-size: 0.9em;
+    margin-bottom: 6px;
+}
+
+.lba-settings-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.lba-hint {
+    display: block;
+    opacity: 0.6;
+    margin: 2px 0 8px;
+}
+
+/* ------------------------------------------------------------------ explorer */
+
+.lba-explorer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(960px, 92vw);
+}
+
+.lba-explorer__toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.lba-explorer__book {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.lba-explorer__toolbar input[type="search"] {
+    flex: 1;
+}
+
+.lba-explorer__panes {
+    display: grid;
+    grid-template-columns: minmax(200px, 280px) 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.lba-tree {
+    border: 1px solid var(--lba-border);
+    border-radius: 6px;
+    padding: 4px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.lba-node {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.lba-node:hover {
+    background: var(--lba-surface-hover);
+}
+
+.lba-node--selected {
+    background: var(--lba-surface-active);
+}
+
+/* Drop target while dragging an entry or a nested list onto this node. */
+.lba-node--drop {
+    outline: 1px dashed var(--lba-accent);
+    outline-offset: -1px;
+}
+
+.lba-node--computed {
+    opacity: 0.85;
+    font-style: italic;
+}
+
+.lba-node__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Two figures, not one: attached here / distinct in the subtree. */
+.lba-node__count {
+    opacity: 0.7;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.lba-node__actions {
+    display: none;
+    gap: 4px;
+}
+
+.lba-node:hover .lba-node__actions {
+    display: flex;
+}
+
+.lba-node__action {
+    opacity: 0.7;
+    cursor: pointer;
+}
+
+.lba-node__action:hover {
+    opacity: 1;
+}
+
+.lba-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.lba-entry {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid var(--lba-border);
+    border-radius: 6px;
+    cursor: grab;
+}
+
+.lba-entry__thumb {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex: 0 0 auto;
+}
+
+.lba-entry__thumb--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--lba-surface);
+    opacity: 0.5;
+}
+
+.lba-entry__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.lba-entry__title {
+    font-weight: 600;
+}
+
+.lba-entry__keys {
+    opacity: 0.7;
+    font-size: 0.85em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lba-entry__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.lba-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--lba-surface);
+    font-size: 0.75em;
+}
+
+.lba-chip--computed {
+    opacity: 0.65;
+    font-style: italic;
+}
+
+.lba-chip__remove {
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.lba-chip__remove:hover {
+    opacity: 1;
+}
+
+/* ------------------------------------------------------------------ restore preview */
+
+.lba-restore {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: min(980px, 94vw);
+}
+
+.lba-restore__header {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.lba-restore__table {
+    border: 1px solid var(--lba-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.lba-restore__row {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr 0.9fr 1.2fr 1.5fr;
+    gap: 8px;
+    padding: 6px 8px;
+    align-items: center;
+    border-bottom: 1px solid var(--lba-border);
+}
+
+.lba-restore__row:last-child {
+    border-bottom: none;
+}
+
+.lba-restore__row--head {
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.lba-restore__row--skipped {
+    opacity: 0.45;
+}
+
+.lba-restore__cell {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lba-restore__muted {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.lba-restore__summary {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+/* Pairs matched on body text alone — where a wrong pairing would hide. */
+.lba-restore__warning {
+    font-size: 0.85em;
+    color: var(--lba-accent);
+}
+
+.lba-restore__totals {
+    text-align: right;
+    opacity: 0.7;
+    font-size: 0.85em;
+}
+
+.lba-entry-lists {
+    flex: 0 0 auto;
+    padding: 2px 6px;
+}

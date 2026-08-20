@@ -1,0 +1,73 @@
+<!--
+    Source language is English. The data-i18n keys are namespaced with `lba.` because
+    SillyTavern's addLocaleData() will not override keys that already exist in the core
+    locale — an unprefixed key like "Delete" would silently pick up the core translation.
+    When no translation is found the element keeps this English text, which is exactly
+    the desired fallback.
+-->
+<div class="lba-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b data-i18n="lba.settings.title">Lorebook Atlas</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+
+        <div class="inline-drawer-content">
+            <div class="lba-summary" id="lba_summary">—</div>
+
+            <div class="lba-settings-row">
+                <div class="menu_button" id="lba_open_gallery" data-i18n="lba.settings.openGallery">Open gallery</div>
+                <div class="menu_button" id="lba_explorer" data-i18n="lba.list.explorer">Lorebook explorer</div>
+                <div class="menu_button" id="lba_verify" data-i18n="lba.settings.verify">Verify storage</div>
+            </div>
+
+            <hr />
+
+            <div class="lba-settings-row">
+                <div class="menu_button" id="lba_export_full" data-i18n="lba.archive.exportFull">Everything</div>
+                <div class="menu_button" id="lba_export_single" data-i18n="lba.archive.exportSingle">One lorebook</div>
+                <div class="menu_button" id="lba_import" data-i18n="lba.archive.import">Restore from archive</div>
+            </div>
+            <small class="lba-hint" data-i18n="lba.archive.hint">
+                One format for both: a full backup and a single-lorebook transfer differ only in
+                what goes in. Restoring always shows a per-lorebook preview first.
+            </small>
+
+            <label class="checkbox_label" for="lba_keep_original">
+                <input type="checkbox" id="lba_keep_original" {{#if keepOriginal}}checked{{/if}} />
+                <span data-i18n="lba.settings.keepOriginal">Keep the original alongside the preview</span>
+            </label>
+
+            <label for="lba_preview_side">
+                <span data-i18n="lba.settings.previewSize">Preview size, px</span>
+                <input type="number" id="lba_preview_side" class="text_pole" min="128" max="2048" step="64" value="{{previewMaxSide}}" />
+            </label>
+
+            <label for="lba_binding_strategy">
+                <span data-i18n="lba.settings.bindingStrategy">Where to store the group identifier</span>
+                <select id="lba_binding_strategy" class="text_pole">
+                    <option value="entry" data-i18n="lba.settings.strategyEntry">In every lorebook entry (reliable)</option>
+                    <option value="book" data-i18n="lba.settings.strategyBook">One field per lorebook (compact)</option>
+                </select>
+            </label>
+            <small class="lba-hint" data-i18n="lba.settings.strategyHint">
+                The compact option keeps one field per lorebook, the reliable one repeats it in
+                every entry. Compact only works if SillyTavern preserves unknown top-level fields;
+                if images or lists stop following a lorebook, switch back to reliable.
+            </small>
+
+            <hr />
+
+            <div class="lba-settings-row">
+                <div class="menu_button lba-button--danger" id="lba_cleanup" data-i18n="lba.settings.cleanup">
+                    Delete all extension data
+                </div>
+            </div>
+            <small class="lba-hint" data-i18n="lba.settings.cleanupHint">
+                Removes every image and the manifest from storage. The broom button in the
+                extensions list does the same. Deleting the extension itself triggers cleanup
+                automatically.
+            </small>
+        </div>
+    </div>
+</div>

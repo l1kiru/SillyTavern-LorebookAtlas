@@ -1,0 +1,10 @@
+# Зависимостей у расширения нет; package.json нужен только для node:test.
+node_modules/
+npm-debug.log*
+
+# Служебное
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
