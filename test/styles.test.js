@@ -164,8 +164,9 @@ test('the explorer fills the ST popup instead of forcing a 960px width', () => {
 });
 
 test('gallery tiles and restore rows adapt on a phone', () => {
-    assert.match(css, /minmax\(120px,\s*1fr\)/);
+    assert.match(css, /--lba-tile-min:\s*120px/);
     assert.match(css, /content-visibility:\s*auto/);
+    assert.match(css, /contain-intrinsic-size:\s*auto\s+var\(--lba-tile-min/);
     assert.match(css, /\.lba-crop__preview[^{]*\{[^}]*max-height:\s*min\(55vh/);
     assert.match(css, /@keyframes\s+lba-pop/);
     assert.match(css, /lba-explorer__back/);

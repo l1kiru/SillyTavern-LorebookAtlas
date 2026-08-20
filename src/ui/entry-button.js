@@ -18,7 +18,7 @@ import { T } from '../i18n.js';
 import { createWiAdapter, bindInteractionBoundary } from './wi-adapter.js';
 import { CROP_DEFAULT, normalizeCrop, applyCropStyle } from '../lorebook-binding.js';
 import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
-import { closeLayer, bindOverlay, bindDismiss, placeMenu, previewAspectRatio } from './overlay.js';
+import { closeLayer, bindOverlay, bindDismiss, placeMenu, previewAspectRatio, clipsOverflow } from './overlay.js';
 
 const CHROME_CLASS = 'lba-entry-chrome';
 const MENU_CLASS = 'lba-thumb-menu';
@@ -76,7 +76,7 @@ function ancestorClip(host) {
     const clip = { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth };
     for (let node = host.parentElement; node && node !== document.body; node = node.parentElement) {
         const { overflowX, overflowY } = getComputedStyle(node);
-        if (!/(auto|scroll|hidden)/.test(overflowY) && !/(auto|scroll|hidden)/.test(overflowX)) continue;
+        if (!clipsOverflow(overflowY) && !clipsOverflow(overflowX)) continue;
         const rect = node.getBoundingClientRect();
         clip.top = Math.max(clip.top, rect.top);
         clip.left = Math.max(clip.left, rect.left);
@@ -387,7 +387,29 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
 
             scan(true);
             observer?.disconnect();
-            observer = new MutationObserver(() => scan());
+            let mutationScan = null;
+            observer = new MutationObserver(() => {
+                if (mutationScan === 'raf') {
+                    mutationScan = 'idle';
+                    return;
+                }
+                if (mutationScan === 'idle') return;
+                mutationScan = 'raf';
+                requestAnimationFrame(() => {
+                    const again = mutationScan === 'idle';
+                    mutationScan = null;
+                    scan(true);
+                    if (!again) return;
+                    mutationScan = 'idle';
+                    const run = () => {
+                        if (mutationScan !== 'idle') return;
+                        mutationScan = null;
+                        scan(true);
+                    };
+                    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 100 });
+                    else queueMicrotask(run);
+                });
+            });
             observer.observe(list, { childList: true, subtree: true });
         },
 

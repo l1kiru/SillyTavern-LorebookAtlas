@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { anchoredPosition, previewAspectRatio, nextOverlayZ } from '../src/ui/overlay.js';
+import { anchoredPosition, previewAspectRatio, nextOverlayZ, clipsOverflow } from '../src/ui/overlay.js';
 
 test('anchoredPosition flips above the point when the menu would overflow', () => {
     assert.deepEqual(
@@ -28,4 +28,11 @@ test('previewAspectRatio follows the stored image, not a square thumb', () => {
 test('overlay z-index climbs so a later menu stacks above an earlier one', () => {
     const first = nextOverlayZ();
     assert.ok(nextOverlayZ() > first);
+});
+
+test('clipsOverflow treats clip the same as hidden', () => {
+    assert.equal(clipsOverflow('clip'), true);
+    assert.equal(clipsOverflow('hidden'), true);
+    assert.equal(clipsOverflow('auto'), true);
+    assert.equal(clipsOverflow('visible'), false);
 });

@@ -122,15 +122,16 @@
 }
 
 .lba-group__body {
+    --lba-tile-min: 96px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--lba-tile-min), 1fr));
     gap: 6px;
     padding: 8px 10px;
 }
 
 @media (max-width: 480px) {
     .lba-group__body {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        --lba-tile-min: 120px;
         gap: 10px;
     }
 }
@@ -147,7 +148,7 @@
     background: var(--lba-surface);
     touch-action: manipulation;
     content-visibility: auto;
-    contain-intrinsic-size: 96px;
+    contain-intrinsic-size: auto var(--lba-tile-min, 96px);
 }
 
 /*

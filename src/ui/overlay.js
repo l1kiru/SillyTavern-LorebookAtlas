@@ -23,11 +23,15 @@ export function closeLayer(className) {
     }
 }
 
+export function clipsOverflow(value) {
+    return value === 'auto' || value === 'scroll' || value === 'hidden' || value === 'clip';
+}
+
 export function lockScroll(from) {
     const stored = [];
     const freeze = node => {
-        stored.push([node, node.style.overflow]);
-        node.style.overflow = 'hidden';
+        stored.push([node, node.style.overflowY]);
+        node.style.overflowY = 'hidden';
     };
     freeze(document.documentElement);
     for (let node = from; node && node !== document.documentElement; node = node.parentElement) {
@@ -35,7 +39,7 @@ export function lockScroll(from) {
         if (overflowY === 'auto' || overflowY === 'scroll') freeze(node);
     }
     return () => {
-        for (const [node, value] of stored) node.style.overflow = value;
+        for (const [node, value] of stored) node.style.overflowY = value;
     };
 }
 
