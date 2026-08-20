@@ -124,10 +124,10 @@ export function createRestorePreview({ context, archive, localBooks, onApply }) 
 
         for (const item of plan.items) {
             body.append(el('div', { class: `lba-restore__row${item.skip ? ' lba-restore__row--skipped' : ''}` }, [
-                el('div', { class: 'lba-restore__cell', text: item.name }),
-                el('div', { class: 'lba-restore__cell' }, [renderLocalCell(item)]),
-                el('div', { class: 'lba-restore__cell' }, [renderPolicySelect(item)]),
-                el('div', { class: 'lba-restore__cell' }, [renderNameCell(item)]),
+                el('div', { class: 'lba-restore__cell', dataset: { label: T('restore.columnArchive') }, text: item.name }),
+                el('div', { class: 'lba-restore__cell', dataset: { label: T('restore.columnLocal') } }, [renderLocalCell(item)]),
+                el('div', { class: 'lba-restore__cell', dataset: { label: T('restore.columnAction') } }, [renderPolicySelect(item)]),
+                el('div', { class: 'lba-restore__cell', dataset: { label: T('restore.columnName') } }, [renderNameCell(item)]),
                 el('div', { class: 'lba-restore__cell lba-restore__cell--wide' }, [renderSummary(item)]),
             ]));
         }

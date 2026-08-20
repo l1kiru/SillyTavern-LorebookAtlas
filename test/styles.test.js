@@ -24,7 +24,7 @@ const cssRaw = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 const css = cssRaw.replace(/\/\*[\s\S]*?\*\//g, '');
 
 const sources = ['src/ui/gallery.js', 'src/ui/explorer.js', 'src/ui/settings.js',
-    'src/ui/entry-button.js', 'src/ui/restore-preview.js', 'templates/settings.html']
+    'src/ui/entry-button.js', 'src/ui/restore-preview.js', 'src/ui/overlay.js', 'templates/settings.html']
     .map(file => ({ file, text: fs.readFileSync(path.join(root, file), 'utf8') }));
 
 /**
@@ -159,17 +159,29 @@ test('World Info entry thumbs stay inside the collapsed header row', () => {
 test('the explorer fills the ST popup instead of forcing a 960px width', () => {
     assert.doesNotMatch(css, /\.lba-explorer[^{]*\{[^}]*min-width:\s*min\(960px/);
     assert.match(css, /\.lba-explorer[^{]*\{[^}]*min-width:\s*0/);
-    assert.match(css, /grid-template-rows:\s*minmax\(8rem,\s*30%\)/);
+    assert.match(css, /lba-explorer--tree/);
+    assert.match(css, /lba-explorer--entries/);
+});
+
+test('gallery tiles and restore rows adapt on a phone', () => {
+    assert.match(css, /minmax\(120px,\s*1fr\)/);
+    assert.match(css, /content-visibility:\s*auto/);
+    assert.match(css, /\.lba-crop__preview[^{]*\{[^}]*max-height:\s*min\(55vh/);
+    assert.match(css, /@keyframes\s+lba-pop/);
+    assert.match(css, /lba-explorer__back/);
+    assert.match(css, /\.lba-restore__cell\[data-label\]::before/);
+    assert.match(css, /touch-action:\s*manipulation/);
 });
 
 test('crop overlay stays in the World Info popup stacking context', () => {
     // position:fixed paints under mobile backdrop-filter; absolute inside the popup
-    // stays above the entry list. JS pins top/height to the visible scrollport.
+    // stays above the entry list. Geometry is clipped to scrolling ancestors.
     assert.match(css, /\.lba-crop\s*\{[^}]*position:\s*absolute/);
     assert.match(css, /#world_popup:has\(>\s*\.lba-crop\)/);
+    assert.doesNotMatch(css, /#world_popup:has\(>\s*\.lba-crop\)\s*\{[^}]*overflow:\s*hidden/);
     const entryButton = sources.find(s => s.file.includes('entry-button')).text;
-    assert.match(entryButton, /host\.scrollTop/);
-    assert.match(entryButton, /host\.clientHeight/);
+    assert.match(entryButton, /cropOverlayBox/);
+    assert.match(entryButton, /_lbaScrollCleanup/);
 });
 
 test('layout preset falls back to normal and writes the clamp variables', () => {

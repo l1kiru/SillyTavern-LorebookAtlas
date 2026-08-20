@@ -15,6 +15,7 @@ import {
 } from '../lists.js';
 import { readEntryLists, writeEntryLists, addEntryToList, removeEntryFromList, entriesWithLists, readEntryCrop, applyCropStyle } from '../lorebook-binding.js';
 import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
+import { debounce } from '../util.js';
 import { el, icon, clear, matches } from './dom.js';
 
 const ROOT = '__root__';
@@ -27,6 +28,18 @@ export function createExplorer({ storage, context, io }) {
     let search = '';
     let root = null;
     let dragging = null;
+    let showingTree = true;
+    const scheduleEntries = debounce(() => renderEntries(), 180);
+
+    function isMobileExplorer() {
+        return window.matchMedia('(max-width: 700px)').matches;
+    }
+
+    function selectList(id) {
+        selected = id;
+        if (isMobileExplorer()) showingTree = false;
+        render();
+    }
 
     function notify(message, type = 'info') {
         globalThis.toastr?.[type]?.(message, T('settings.title'));
@@ -84,7 +97,7 @@ export function createExplorer({ storage, context, io }) {
             style: { paddingLeft: `${depth * 14 + 6}px` },
             draggable: node.list.kind === LIST_KIND.MANUAL,
             on: {
-                click: () => { selected = node.list.id; render(); },
+                click: () => selectList(node.list.id),
                 dragstart: event => {
                     dragging = { type: 'list', id: node.list.id };
                     event.stopPropagation();
@@ -195,7 +208,7 @@ export function createExplorer({ storage, context, io }) {
         const all = entries();
         const rootRow = el('div', {
             class: `lba-node${selected === ROOT ? ' lba-node--selected' : ''}`,
-            on: { click: () => { selected = ROOT; render(); } },
+            on: { click: () => selectList(ROOT) },
         }, [
             icon('fa-solid fa-book'),
             el('span', { class: 'lba-node__name', text: T('list.rootLabel') }),
@@ -206,7 +219,7 @@ export function createExplorer({ storage, context, io }) {
 
         const computed = computedDefinitions().map(list => el('div', {
             class: `lba-node lba-node--computed${selected === list.id ? ' lba-node--selected' : ''}`,
-            on: { click: () => { selected = list.id; render(); } },
+            on: { click: () => selectList(list.id) },
         }, [
             icon('fa-solid fa-wand-magic-sparkles'),
             el('span', { class: 'lba-node__name', text: listLabel(list) }),
@@ -280,7 +293,11 @@ export function createExplorer({ storage, context, io }) {
             class: 'lba-entry',
             draggable: true,
             on: {
-                dragstart: () => { dragging = { type: 'entry', uid: item.uid }; },
+                dragstart: event => {
+                    dragging = { type: 'entry', uid: item.uid };
+                    event.currentTarget.classList.add('lba-entry--dragging');
+                },
+                dragend: event => event.currentTarget.classList.remove('lba-entry--dragging'),
             },
         }, [
             image
@@ -334,21 +351,36 @@ export function createExplorer({ storage, context, io }) {
 
     // ---------------------------------------------------------------- shell
 
+    function renderEntries() {
+        const pane = root?.querySelector('.lba-entries');
+        if (!pane) return;
+        clear(pane);
+        const visible = visibleEntries();
+        pane.append(...(visible.length
+            ? visible.map(renderEntry)
+            : [el('div', { class: 'lba-empty', text: T('list.empty') })]));
+    }
+
     function render() {
         if (!root) return;
         clear(root);
 
-        const visible = visibleEntries();
         const searchInput = el('input', {
             class: 'text_pole',
             type: 'search',
             placeholder: T('gallery.search'),
             value: search,
-            on: { input: event => { search = event.target.value; render(); } },
+            on: { input: event => { search = event.target.value; scheduleEntries(); } },
         });
 
+        root.className = `lba-explorer${showingTree ? ' lba-explorer--tree' : ' lba-explorer--entries'}`;
         root.append(
             el('div', { class: 'lba-explorer__toolbar' }, [
+                el('div', {
+                    class: 'menu_button lba-explorer__back',
+                    text: T('list.back'),
+                    on: { click: () => { showingTree = true; render(); } },
+                }),
                 el('span', { class: 'lba-explorer__book', text: bookName }),
                 searchInput,
                 el('span', {
@@ -358,12 +390,10 @@ export function createExplorer({ storage, context, io }) {
             ]),
             el('div', { class: 'lba-explorer__panes' }, [
                 renderTree(),
-                el('div', { class: 'lba-entries' },
-                    visible.length
-                        ? visible.map(renderEntry)
-                        : [el('div', { class: 'lba-empty', text: T('list.empty') })]),
+                el('div', { class: 'lba-entries' }),
             ]),
         );
+        renderEntries();
     }
 
     return {
@@ -383,7 +413,8 @@ export function createExplorer({ storage, context, io }) {
 
             selected = ROOT;
             search = '';
-            root = el('div', { class: 'lba-explorer' });
+            showingTree = true;
+            root = el('div', { class: 'lba-explorer lba-explorer--tree' });
             render();
 
             await context.callGenericPopup(root, context.POPUP_TYPE.TEXT, '', {

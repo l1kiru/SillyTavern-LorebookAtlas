@@ -13,8 +13,9 @@ import { ORPHAN_GROUP_ID } from '../constants.js';
 import { sortGroups, isDeletable, groupLabel } from '../groups.js';
 import { T } from '../i18n.js';
 import * as model from '../manifest-model.js';
-import { formatBytes } from '../util.js';
+import { formatBytes, debounce } from '../util.js';
 import { el, icon, clear, matches } from './dom.js';
+import { closeLayer, bindOverlay, bindDismiss, placeMenu } from './overlay.js';
 
 const FILTER = Object.freeze({
     ALL: 'all',
@@ -27,6 +28,7 @@ export function createGallery({ storage, context, settings, onPick }) {
     let search = '';
     let filter = FILTER.ALL;
     let root = null;
+    const scheduleList = debounce(() => renderList(), 180);
 
     const collapsed = () => new Set(settings().collapsedGroups || []);
 
@@ -57,10 +59,14 @@ export function createGallery({ storage, context, settings, onPick }) {
             src: `/${image.variants.preview || image.variants.original || ''}`,
             loading: 'lazy',
             alt: image.originalName || '',
+            on: { load: () => img.classList.add('lba-tile__img--ready') },
         });
 
         const tile = el('div', {
             class: `lba-tile${image.locked ? ' lba-tile--locked' : ''}`,
+            role: 'button',
+            tabIndex: 0,
+            'aria-pressed': image.locked ? 'true' : 'false',
             title: [
                 image.originalName || image.id,
                 `${image.width}×${image.height}`,
@@ -70,7 +76,26 @@ export function createGallery({ storage, context, settings, onPick }) {
                     ? T('image.usedInShort', { count: image.refs.length })
                     : T('image.unused'),
             ].filter(Boolean).join('\n'),
-            on: { click: () => openImageActions(image) },
+            on: {
+                click: event => {
+                    if (event.currentTarget.dataset.lbaSkipClick) {
+                        delete event.currentTarget.dataset.lbaSkipClick;
+                        return;
+                    }
+                    openImageActions(image);
+                },
+                contextmenu: event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.currentTarget.dataset.lbaSkipClick = '1';
+                    openTileMenu(event, image);
+                },
+                keydown: event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    openImageActions(image);
+                },
+            },
         }, [img]);
 
         if (image.locked) {
@@ -80,8 +105,63 @@ export function createGallery({ storage, context, settings, onPick }) {
         return tile;
     }
 
+    async function toggleLock(image) {
+        await storage.setLock(image.id, !image.locked);
+        render();
+    }
+
+    async function confirmDelete(image) {
+        if (image.locked) {
+            notify(T('image.lockedWarning'), 'warning');
+            return;
+        }
+        const confirmed = await context.callGenericPopup(
+            el('p', { text: T('image.confirmDelete', { name: image.originalName || image.id }) }),
+            context.POPUP_TYPE.CONFIRM,
+        );
+        if (confirmed === context.POPUP_RESULT.AFFIRMATIVE) {
+            await storage.deleteImage(image.id);
+            render();
+        }
+    }
+
+    async function copyImageId(image) {
+        try {
+            await navigator.clipboard.writeText(image.id);
+            notify(T('image.idCopied'), 'success');
+        } catch {
+            notify(image.id, 'info');
+        }
+    }
+
+    function openTileMenu(event, image) {
+        closeLayer('lba-thumb-menu');
+        const menu = el('div', { class: 'lba-thumb-menu', role: 'menu' }, [
+            el('div', {
+                class: 'menu_button',
+                role: 'menuitem',
+                on: { click: () => { closeLayer('lba-thumb-menu'); void toggleLock(image); } },
+            }, [icon(image.locked ? 'fa-solid fa-lock-open' : 'fa-solid fa-lock'), el('span', { text: image.locked ? T('image.unlock') : T('image.lock') })]),
+            el('div', {
+                class: 'menu_button',
+                role: 'menuitem',
+                on: { click: () => { closeLayer('lba-thumb-menu'); void copyImageId(image); } },
+            }, [icon('fa-solid fa-copy'), el('span', { text: T('image.copyId') })]),
+            el('div', {
+                class: 'menu_button lba-button--danger',
+                role: 'menuitem',
+                on: { click: () => { closeLayer('lba-thumb-menu'); void confirmDelete(image); } },
+            }, [icon('fa-solid fa-trash-can'), el('span', { text: T('image.delete') })]),
+        ]);
+        document.body.append(menu);
+        placeMenu(menu, { x: event.clientX, y: event.clientY });
+        bindDismiss(menu, 'lba-thumb-menu');
+        bindOverlay(menu, { className: 'lba-thumb-menu', initial: menu.querySelector('.menu_button') });
+    }
+
     async function openImageActions(image) {
-        const { Popup, POPUP_TYPE, POPUP_RESULT } = context;
+        const { Popup } = context;
+        const previous = document.activeElement;
 
         const body = el('div', { class: 'lba-detail' }, [
             el('img', { class: 'lba-detail__img', src: `/${image.variants.original || image.variants.preview}` }),
@@ -107,26 +187,11 @@ export function createGallery({ storage, context, settings, onPick }) {
         });
 
         const result = await popup.show();
+        previous?.focus?.();
 
-        if (result === 10) {
-            await storage.setLock(image.id, !image.locked);
-            render();
-        } else if (result === 11) {
-            if (image.locked) {
-                notify(T('image.lockedWarning'), 'warning');
-                return;
-            }
-            const confirmed = await context.callGenericPopup(
-                el('p', { text: T('image.confirmDelete', { name: image.originalName || image.id }) }),
-                POPUP_TYPE.CONFIRM,
-            );
-            if (confirmed === POPUP_RESULT.AFFIRMATIVE) {
-                await storage.deleteImage(image.id);
-                render();
-            }
-        } else if (result === 12) {
-            onPick?.(image);
-        }
+        if (result === 10) await toggleLock(image);
+        else if (result === 11) await confirmDelete(image);
+        else if (result === 12) onPick?.(image);
     }
 
     // ---------------------------------------------------------------- groups
@@ -149,11 +214,21 @@ export function createGallery({ storage, context, settings, onPick }) {
         if (!images.length && !search && filter !== FILTER.ALL) return null;
         if (filter === FILTER.ORPHANED && !group.orphanedAt && !group.system) return null;
 
+        const bodyId = `lba-g-${String(group.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
         const header = el('div', {
             class: 'lba-group__header',
+            role: 'button',
+            tabIndex: 0,
+            'aria-controls': bodyId,
             on: {
                 click: event => {
                     if (event.target.closest('.lba-group__actions')) return;
+                    toggleCollapsed(group.id);
+                    render();
+                },
+                keydown: event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
                     toggleCollapsed(group.id);
                     render();
                 },
@@ -166,7 +241,7 @@ export function createGallery({ storage, context, settings, onPick }) {
             renderGroupActions(group, stats),
         ]);
 
-        const body = el('div', { class: 'lba-group__body' },
+        const body = el('div', { class: 'lba-group__body', id: bodyId },
             images.length
                 ? images.map(renderTile)
                 : [el('div', { class: 'lba-empty', text: search ? T('gallery.notFound') : T('gallery.emptyGroup') })]);
@@ -257,7 +332,7 @@ export function createGallery({ storage, context, settings, onPick }) {
             on: {
                 input: event => {
                     search = event.target.value;
-                    renderList();
+                    scheduleList();
                 },
             },
         });

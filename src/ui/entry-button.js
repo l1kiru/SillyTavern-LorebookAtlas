@@ -18,6 +18,7 @@ import { T } from '../i18n.js';
 import { createWiAdapter, bindInteractionBoundary } from './wi-adapter.js';
 import { CROP_DEFAULT, normalizeCrop, applyCropStyle } from '../lorebook-binding.js';
 import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
+import { closeLayer, bindOverlay, bindDismiss, placeMenu, previewAspectRatio } from './overlay.js';
 
 const CHROME_CLASS = 'lba-entry-chrome';
 const MENU_CLASS = 'lba-thumb-menu';
@@ -28,11 +29,14 @@ function cropSig(crop) {
     return `${next.x}:${next.y}:${next.zoom}`;
 }
 
-function closeLayer(className) {
-    for (const node of document.querySelectorAll(`.${className}`)) {
-        node._lbaDismiss && document.removeEventListener('pointerdown', node._lbaDismiss, true);
-        node.remove();
-    }
+/** Pointer delta as a fraction of the preview box, scaled by zoom. */
+export function panCrop(crop, dxRatio, dyRatio) {
+    const next = normalizeCrop(crop);
+    return normalizeCrop({
+        x: next.x - dxRatio / next.zoom,
+        y: next.y - dyRatio / next.zoom,
+        zoom: next.zoom,
+    });
 }
 
 /** World Info's popup uses backdrop-filter, which on mobile paints above body-level fixed layers. */
@@ -40,17 +44,82 @@ function cropHost() {
     return document.getElementById('world_popup') || document.body;
 }
 
-/** Absolute inside the popup (so it stacks above the entry list); pin to the visible scrollport. */
+/**
+ * Map a viewport clip onto a position:absolute overlay inside `host`.
+ * The lorebook list usually scrolls on `#world_popup_entries_list` or the parent
+ * `#WorldInfo.drawer-content`, so `host.scrollTop` is 0 even after the user has scrolled.
+ */
+export function cropOverlayBox(hostRect, clipRect, scrollTop = 0, scrollLeft = 0) {
+    const top = Math.max(hostRect.top, clipRect.top);
+    const left = Math.max(hostRect.left, clipRect.left);
+    const bottom = Math.min(hostRect.bottom, clipRect.bottom);
+    const right = Math.min(hostRect.right, clipRect.right);
+    const width = Math.max(0, right - left);
+    const height = Math.max(0, bottom - top);
+    if (!width || !height) {
+        return {
+            top: scrollTop,
+            left: scrollLeft,
+            width: Math.max(0, hostRect.right - hostRect.left),
+            height: Math.max(0, hostRect.bottom - hostRect.top),
+        };
+    }
+    return {
+        top: top - hostRect.top + scrollTop,
+        left: left - hostRect.left + scrollLeft,
+        width,
+        height,
+    };
+}
+
+function ancestorClip(host) {
+    const clip = { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth };
+    for (let node = host.parentElement; node && node !== document.body; node = node.parentElement) {
+        const { overflowX, overflowY } = getComputedStyle(node);
+        if (!/(auto|scroll|hidden)/.test(overflowY) && !/(auto|scroll|hidden)/.test(overflowX)) continue;
+        const rect = node.getBoundingClientRect();
+        clip.top = Math.max(clip.top, rect.top);
+        clip.left = Math.max(clip.left, rect.left);
+        clip.bottom = Math.min(clip.bottom, rect.bottom);
+        clip.right = Math.min(clip.right, rect.right);
+    }
+    return clip;
+}
+
+function applyCropOverlayBox(overlay, box) {
+    overlay.style.top = `${box.top}px`;
+    overlay.style.left = `${box.left}px`;
+    overlay.style.width = `${box.width}px`;
+    overlay.style.height = `${box.height}px`;
+    overlay.style.right = 'auto';
+}
+
 function mountCropOverlay(overlay) {
     const host = cropHost();
     host.append(overlay);
-    overlay.style.top = `${host.scrollTop}px`;
-    overlay.style.height = `${host.clientHeight}px`;
+    if (host === document.body) {
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100dvh';
+        return;
+    }
+    const place = () => {
+        applyCropOverlayBox(
+            overlay,
+            cropOverlayBox(host.getBoundingClientRect(), ancestorClip(host), host.scrollTop, host.scrollLeft),
+        );
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    overlay._lbaScrollCleanup = () => window.removeEventListener('scroll', place, true);
 }
 
 function slider(label, min, max, step, value) {
-    const output = el('output', { text: String(value) });
+    const id = `lba-crop-${label.replace(/\W+/g, '').toLowerCase() || 'field'}`;
+    const output = el('output', { text: String(value), for: id, 'aria-live': 'polite' });
     const input = el('input', {
+        id,
         type: 'range',
         min: String(min),
         max: String(max),
@@ -96,37 +165,50 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         const y = slider(T('entry.cropY'), 0, 100, 1, Math.round(working.y * 100));
         const zoom = slider(T('entry.cropZoom'), 1, 4, 0.01, working.zoom.toFixed(2));
 
-        const sync = () => {
-            working = normalizeCrop({
-                x: Number(x.input.value) / 100,
-                y: Number(y.input.value) / 100,
-                zoom: Number(zoom.input.value),
-            });
+        const paintWorking = next => {
+            working = normalizeCrop(next);
+            x.input.value = String(Math.round(working.x * 100));
+            y.input.value = String(Math.round(working.y * 100));
+            zoom.input.value = working.zoom.toFixed(2);
+            x.output.textContent = x.input.value;
+            y.output.textContent = y.input.value;
+            zoom.output.textContent = zoom.input.value;
             applyCropStyle(preview, working);
         };
+
+        const sync = () => paintWorking({
+            x: Number(x.input.value) / 100,
+            y: Number(y.input.value) / 100,
+            zoom: Number(zoom.input.value),
+        });
         for (const input of [x.input, y.input, zoom.input]) input.addEventListener('input', sync);
 
-        const overlay = el('div', { class: CROP_CLASS }, [
+        let drag = null;
+        preview.addEventListener('pointerdown', event => {
+            if (event.button) return;
+            preview.setPointerCapture(event.pointerId);
+            const rect = preview.getBoundingClientRect();
+            drag = { x: event.clientX, y: event.clientY, crop: { ...working }, w: rect.width, h: rect.height };
+        });
+        preview.addEventListener('pointermove', event => {
+            if (!drag) return;
+            paintWorking(panCrop(drag.crop, (event.clientX - drag.x) / drag.w, (event.clientY - drag.y) / drag.h));
+        });
+        const endDrag = () => { drag = null; };
+        preview.addEventListener('pointerup', endDrag);
+        preview.addEventListener('pointercancel', endDrag);
+
+        const frame = el('div', { class: 'lba-crop__preview', style: { aspectRatio: previewAspectRatio(image.width, image.height) } }, [preview]);
+        const overlay = el('div', { class: CROP_CLASS, role: 'dialog', 'aria-label': T('entry.crop') }, [
             el('div', { class: 'lba-crop__panel' }, [
-                el('div', { class: 'lba-crop__preview' }, [preview]),
+                frame,
                 el('small', { class: 'lba-hint', text: T('entry.cropHelp') }),
                 x.row, y.row, zoom.row,
                 el('div', { class: 'lba-crop__actions' }, [
                     el('div', {
                         class: 'menu_button',
                         text: T('entry.cropReset'),
-                        on: {
-                            click: () => {
-                                working = { ...CROP_DEFAULT };
-                                x.input.value = '50';
-                                y.input.value = '50';
-                                zoom.input.value = '1';
-                                x.output.textContent = '50';
-                                y.output.textContent = '50';
-                                zoom.output.textContent = '1';
-                                applyCropStyle(preview, working);
-                            },
-                        },
+                        on: { click: () => paintWorking(CROP_DEFAULT) },
                     }),
                     el('div', { class: 'menu_button', text: T('entry.cropCancel'), on: { click: () => closeLayer(CROP_CLASS) } }),
                     el('div', {
@@ -147,46 +229,48 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
             if (event.target === overlay) closeLayer(CROP_CLASS);
         });
         mountCropOverlay(overlay);
+        bindOverlay(overlay, { className: CROP_CLASS, initial: x.input, lockFrom: cropHost() });
     }
 
     function openThumbMenu(anchor, uid, image) {
         closeLayer(MENU_CLASS);
-        const menu = el('div', { class: MENU_CLASS }, [
+        const menu = el('div', { class: MENU_CLASS, role: 'menu' }, [
             el('div', {
                 class: 'menu_button',
-                text: T('entry.menuReplace'),
+                role: 'menuitem',
                 on: {
                     click: () => {
                         closeLayer(MENU_CLASS);
-                        void onAttach({ entryUid: uid, bookName: wi.bookName(), current: image });
+                        void runAttach(anchor, { entryUid: uid, bookName: wi.bookName(), current: image });
                     },
                 },
-            }),
+            }, [icon('fa-solid fa-rotate'), el('span', { text: T('entry.menuReplace') })]),
             el('div', {
                 class: 'menu_button',
-                text: T('entry.crop'),
+                role: 'menuitem',
                 on: { click: () => openCropEditor(uid, image) },
-            }),
+            }, [icon('fa-solid fa-crop-simple'), el('span', { text: T('entry.crop') })]),
         ]);
         bindInteractionBoundary(menu);
         document.body.append(menu);
         const rect = anchor.getBoundingClientRect();
-        const box = menu.getBoundingClientRect();
-        const pad = 8;
-        let left = rect.left;
-        let top = rect.bottom + 4;
-        if (left + box.width > window.innerWidth - pad) left = window.innerWidth - box.width - pad;
-        if (top + box.height > window.innerHeight - pad) top = rect.top - box.height - 4;
-        if (top < pad) top = pad;
-        if (left < pad) left = pad;
-        menu.style.left = `${Math.round(left)}px`;
-        menu.style.top = `${Math.round(top)}px`;
-        const dismiss = event => {
-            if (menu.contains(event.target)) return;
-            closeLayer(MENU_CLASS);
-        };
-        menu._lbaDismiss = dismiss;
-        document.addEventListener('pointerdown', dismiss, true);
+        placeMenu(menu, { x: rect.left, y: rect.bottom + 4 });
+        bindDismiss(menu, MENU_CLASS);
+        bindOverlay(menu, { className: MENU_CLASS, initial: menu.querySelector('.menu_button') });
+    }
+
+    async function runAttach(button, payload) {
+        button.classList.add('lba-entry-button--loading');
+        button.setAttribute('aria-busy', 'true');
+        const spin = icon('fa-solid fa-spinner fa-spin');
+        button.append(spin);
+        try {
+            await onAttach(payload);
+        } finally {
+            spin.remove();
+            button.classList.remove('lba-entry-button--loading');
+            button.removeAttribute('aria-busy');
+        }
     }
 
     function buildChrome(entryNode, uid) {
@@ -195,12 +279,20 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         const imageButton = el('div', {
             class: `menu_button lba-button--icon lba-entry-button${image ? ' lba-entry-button--set' : ''}`,
             title: image ? T('entry.replace') : T('entry.add'),
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': image ? T('entry.replace') : T('entry.add'),
             on: {
                 click: event => {
                     event.preventDefault();
                     event.stopPropagation();
                     if (image) openThumbMenu(event.currentTarget, uid, image);
-                    else void onAttach({ entryUid: uid, bookName: wi.bookName(), current: image });
+                    else void runAttach(event.currentTarget, { entryUid: uid, bookName: wi.bookName(), current: image });
+                },
+                keydown: event => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    event.currentTarget.click();
                 },
             },
         }, [
@@ -250,28 +342,30 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
      * A rescan is cheap but not free, and a slow one must not clobber a newer one — hence
      * the generation guard.
      */
-    function scan() {
+    function scan(immediate = false) {
         const mine = ++generation;
-        const entries = wi.entries();
-        let decorated = 0;
+        const run = () => {
+            if (mine !== generation) return;
+            const entries = wi.entries();
+            let decorated = 0;
 
-        for (const node of entries) {
-            if (mine !== generation) return decorated;
-            if (decorate(node)) decorated += 1;
-        }
+            for (const node of entries) {
+                if (mine !== generation) return;
+                if (decorate(node)) decorated += 1;
+            }
 
-        if (entries.length && !decorated) {
-            console.warn('[lorebook-atlas] World Info entries found but no uid could be read; markup may have changed', wi.diagnostics());
-        }
+            if (entries.length && !decorated) {
+                console.warn('[lorebook-atlas] World Info entries found but no uid could be read; markup may have changed', wi.diagnostics());
+            }
 
-        // Freshly rendered rows arrive unfiltered; whoever owns the filter re-applies it.
-        try {
-            onAfterScan?.();
-        } catch (error) {
-            console.error('[lorebook-atlas] post-scan hook failed:', error);
-        }
-
-        return decorated;
+            try {
+                onAfterScan?.();
+            } catch (error) {
+                console.error('[lorebook-atlas] post-scan hook failed:', error);
+            }
+        };
+        if (immediate || typeof requestIdleCallback !== 'function') run();
+        else requestIdleCallback(run, { timeout: 100 });
     }
 
     return {
@@ -291,7 +385,7 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
                 return;
             }
 
-            scan();
+            scan(true);
             observer?.disconnect();
             observer = new MutationObserver(() => scan());
             observer.observe(list, { childList: true, subtree: true });
@@ -307,7 +401,7 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
         /** Forces a rebuild after the catalogue changed under us. */
         refresh() {
             for (const chrome of document.querySelectorAll(`.${CHROME_CLASS}`)) chrome.remove();
-            scan();
+            scan(true);
         },
 
         diagnostics: () => wi.diagnostics(),
