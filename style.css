@@ -770,9 +770,17 @@
 .lba-entry__thumb {
     width: 44px;
     height: 44px;
-    object-fit: cover;
     border-radius: 4px;
     flex: 0 0 auto;
+    overflow: hidden;
+    position: relative;
+}
+
+.lba-entry__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .lba-entry__thumb--empty {

@@ -13,7 +13,7 @@ import {
     setParent, computedDefinitions, computedListsFor, isComputed, COMPUTED_LISTS,
     LIST_KIND, distinctListedCount,
 } from '../lists.js';
-import { readEntryLists, writeEntryLists, addEntryToList, removeEntryFromList, entriesWithLists } from '../lorebook-binding.js';
+import { readEntryLists, writeEntryLists, addEntryToList, removeEntryFromList, entriesWithLists, readEntryCrop, applyCropStyle } from '../lorebook-binding.js';
 import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
 import { el, icon, clear, matches } from './dom.js';
 
@@ -247,7 +247,12 @@ export function createExplorer({ storage, context, io }) {
             },
         }, [
             image
-                ? el('img', { class: 'lba-entry__thumb', src: `/${image.variants.preview || image.variants.original}`, alt: '' })
+                ? el('span', { class: 'lba-entry__thumb' }, [
+                    applyCropStyle(
+                        el('img', { src: `/${image.variants.preview || image.variants.original}`, alt: '' }),
+                        readEntryCrop(item.entry),
+                    ),
+                ])
                 : el('span', { class: 'lba-entry__thumb lba-entry__thumb--empty' }, [icon('fa-solid fa-image')]),
             el('div', { class: 'lba-entry__body' }, [
                 el('div', { class: 'lba-entry__title', text: item.entry.comment || `#${item.uid}` }),
