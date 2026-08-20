@@ -69,12 +69,17 @@ export const STRINGS = Object.freeze({
     'verify.missing': 'Checked {checked} files, {missing} missing.',
     'verify.affected': 'Affected images: {count}. Their records point to files that are not on disk.',
 
-    // Settings panel
+    // Settings panel. settings.title is the product name — keep it English in every locale.
     'settings.title': 'Lorebook Atlas',
     'settings.openGallery': 'Open gallery',
     'settings.verify': 'Verify storage',
     'settings.keepOriginal': 'Keep the original alongside the preview',
     'settings.previewSize': 'Preview size, px',
+    'settings.iconSize': 'Icon size',
+    'settings.iconSizeCompact': 'Compact',
+    'settings.iconSizeNormal': 'Normal',
+    'settings.iconSizeLarge': 'Large',
+    'settings.iconSizeXLarge': 'Extra large',
     'settings.bindingStrategy': 'Where to store the group identifier',
     'settings.strategyEntry': 'In every lorebook entry (reliable)',
     'settings.strategyBook': 'One field per lorebook (compact)',

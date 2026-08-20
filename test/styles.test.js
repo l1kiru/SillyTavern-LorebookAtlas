@@ -14,6 +14,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { LAYOUT_PRESETS, normalizeLayoutPreset } from '../src/constants.js';
+import { applyLayoutPreset } from '../src/ui/settings.js';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cssRaw = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 // Comments mention SillyTavern variables by name while explaining why they are avoided;
@@ -134,21 +137,24 @@ test('the orphan badge does not borrow SillyTavern red', () => {
 });
 
 test('World Info entry thumbs stay inside the collapsed header row', () => {
-    // SillyTavern's collapsed .world_entry is ~60px on a default 1920x1080 theme
-    // (--mainFontSize 15px, text_pole/menu_button padding and margins). A 96%
-    // width with a 220px cap wrapped the chrome onto a new flex line and blew
-    // the row to more than three times that height.
+    // A 96% width with a 220px cap wrapped the chrome onto a new flex line.
+    // Icons are a square clamp, same as Lorebook Images: desktop / 768 / 480.
     assert.doesNotMatch(css, /--lba-entry-thumb-max-height:\s*220px/);
     assert.doesNotMatch(css, /--lba-entry-thumb-width:\s*96%/);
-    assert.match(css, /--lba-entry-thumb-height:\s*calc\(var\(--mainFontSize,\s*15px\)\s*\*\s*4\)/);
     assert.doesNotMatch(css, /\.lba-entry-chrome[^{]*\{[^}]*flex:\s*1\s+1\s+100%/);
-    assert.doesNotMatch(css, /\.lba-entry-button--set[^{]*\{[^}]*flex:\s*1\s+1\s+100%/);
-    // Same compounding as .lba-button--icon, otherwise that rule's padding wins.
-    assert.match(css, /\.menu_button\.lba-entry-button--set/);
+    assert.match(css, /\.menu_button\.lba-entry-button/);
+    assert.ok(css.includes(LAYOUT_PRESETS.normal.iconDesktop));
+    assert.ok(css.includes(LAYOUT_PRESETS.normal.iconTablet));
+    assert.ok(css.includes(LAYOUT_PRESETS.normal.iconMobile));
+    assert.match(css, /@media\s*\(max-width:\s*768px\)/);
+    assert.match(css, /@media\s*\(max-width:\s*480px\)/);
+});
 
-    // SillyTavern's mobile sheet is 1000px; a desktop-sized thumb starves the title.
-    const mobile = css.match(/@media\s*\(max-width:\s*1000px\)\s*\{([\s\S]*?)\n\}/);
-    assert.ok(mobile, 'entry thumbs need a rule at SillyTavern\'s 1000px breakpoint');
-    assert.match(mobile[1], /--lba-entry-thumb-height:\s*calc\(var\(--mainFontSize,\s*15px\)\s*\*\s*2\.2\)/);
-    assert.match(mobile[1], /\.lba-entry-chrome[^{]*\{[^}]*flex:\s*0\s+1\s+auto/);
+test('layout preset falls back to normal and writes the clamp variables', () => {
+    assert.equal(normalizeLayoutPreset('nope'), 'normal');
+    const written = {};
+    applyLayoutPreset('large', { style: { setProperty(name, value) { written[name] = value; } } });
+    assert.equal(written['--lba-entry-icon-desktop'], LAYOUT_PRESETS.large.iconDesktop);
+    assert.equal(written['--lba-entry-icon-tablet'], LAYOUT_PRESETS.large.iconTablet);
+    assert.equal(written['--lba-entry-icon-mobile'], LAYOUT_PRESETS.large.iconMobile);
 });

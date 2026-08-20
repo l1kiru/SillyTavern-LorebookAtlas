@@ -56,9 +56,11 @@ for (const locale of LOCALES) {
     });
 
     test(`${locale}: nothing is left in English by accident`, () => {
+        // Product name stays English on purpose; everything else must actually be translated.
+        const keepEnglish = new Set(['settings.title']);
         const data = readLocale(locale);
         const untouched = Object.entries(STRINGS)
-            .filter(([key, english]) => data[fullKey(key)] === english && /[a-zA-Z]{4}/.test(english))
+            .filter(([key, english]) => !keepEnglish.has(key) && data[fullKey(key)] === english && /[a-zA-Z]{4}/.test(english))
             .map(([key]) => key);
         assert.deepEqual(untouched, [], `strings identical to the English source in ${locale}`);
     });

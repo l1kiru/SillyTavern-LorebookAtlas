@@ -43,6 +43,16 @@
                 <input type="number" id="lba_preview_side" class="text_pole" min="128" max="2048" step="64" value="{{previewMaxSide}}" />
             </label>
 
+            <label for="lba_layout_preset">
+                <span data-i18n="lba.settings.iconSize">Icon size</span>
+                <select id="lba_layout_preset" class="text_pole">
+                    <option value="compact" data-i18n="lba.settings.iconSizeCompact">Compact</option>
+                    <option value="normal" data-i18n="lba.settings.iconSizeNormal">Normal</option>
+                    <option value="large" data-i18n="lba.settings.iconSizeLarge">Large</option>
+                    <option value="xlarge" data-i18n="lba.settings.iconSizeXLarge">Extra large</option>
+                </select>
+            </label>
+
             <label for="lba_binding_strategy">
                 <span data-i18n="lba.settings.bindingStrategy">Where to store the group identifier</span>
                 <select id="lba_binding_strategy" class="text_pole">

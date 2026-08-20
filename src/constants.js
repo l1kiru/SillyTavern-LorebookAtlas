@@ -101,5 +101,36 @@ export const DEFAULTS = Object.freeze({
     cleanupConcurrency: 8,
 });
 
+/**
+ * Display-size presets for the World Info header icon. Same clamps Lorebook Images used.
+ * Encoding size is previewMaxSide; this only changes how large the icon is on screen.
+ */
+export const LAYOUT_PRESETS = Object.freeze({
+    compact: Object.freeze({
+        iconDesktop: 'clamp(2.15rem, 3vw, 2.5rem)',
+        iconTablet: 'clamp(2.05rem, 5vw, 2.35rem)',
+        iconMobile: 'clamp(2rem, 11vw, 2.25rem)',
+    }),
+    normal: Object.freeze({
+        iconDesktop: 'clamp(2.55rem, 3.5vw, 3rem)',
+        iconTablet: 'clamp(2.35rem, 5.8vw, 2.75rem)',
+        iconMobile: 'clamp(2.2rem, 12vw, 2.55rem)',
+    }),
+    large: Object.freeze({
+        iconDesktop: 'clamp(3.1rem, 4.5vw, 4rem)',
+        iconTablet: 'clamp(2.8rem, 7vw, 3.5rem)',
+        iconMobile: 'clamp(2.45rem, 13vw, 3rem)',
+    }),
+    xlarge: Object.freeze({
+        iconDesktop: 'clamp(3.6rem, 5.4vw, 4.75rem)',
+        iconTablet: 'clamp(3.1rem, 8vw, 4rem)',
+        iconMobile: 'clamp(2.7rem, 14vw, 3.35rem)',
+    }),
+});
+
+export function normalizeLayoutPreset(name) {
+    return Object.hasOwn(LAYOUT_PRESETS, name) ? name : 'normal';
+}
+
 /** Hard limit imposed by SillyTavern's validateAssetFileName(). */
 export const SAFE_FILENAME_RE = /^[a-zA-Z0-9_\-.]+$/;

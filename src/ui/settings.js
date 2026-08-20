@@ -4,10 +4,20 @@
  * handling for free, unlike building the markup by hand.
  */
 
-import { EXTENSION_FOLDER, TEMPLATE_ID } from '../constants.js';
+import { EXTENSION_FOLDER, TEMPLATE_ID, LAYOUT_PRESETS, normalizeLayoutPreset } from '../constants.js';
 import { T } from '../i18n.js';
 import { formatBytes } from '../util.js';
 import { el } from './dom.js';
+
+/** Writes the preset's clamp values onto :root so .lba-entry-chrome inherits them. */
+export function applyLayoutPreset(name, root = globalThis.document?.documentElement) {
+    const preset = LAYOUT_PRESETS[normalizeLayoutPreset(name)];
+    if (!root?.style?.setProperty) return preset;
+    root.style.setProperty('--lba-entry-icon-desktop', preset.iconDesktop);
+    root.style.setProperty('--lba-entry-icon-tablet', preset.iconTablet);
+    root.style.setProperty('--lba-entry-icon-mobile', preset.iconMobile);
+    return preset;
+}
 
 export function createSettingsPanel({ storage, context, settings, gallery, actions = {} }) {
     function notify(message, type = 'info') {
@@ -99,6 +109,7 @@ export function createSettingsPanel({ storage, context, settings, gallery, actio
             host.append(container);
 
             container.querySelector('#lba_binding_strategy').value = settings().bindingStrategy;
+            container.querySelector('#lba_layout_preset').value = normalizeLayoutPreset(settings().layoutPreset);
 
             container.querySelector('#lba_open_gallery')?.addEventListener('click', () => gallery.open());
 
@@ -119,6 +130,14 @@ export function createSettingsPanel({ storage, context, settings, gallery, actio
                 const value = Number(event.target.value);
                 settings().previewMaxSide = Number.isFinite(value) ? Math.min(2048, Math.max(128, value)) : 512;
                 event.target.value = settings().previewMaxSide;
+                context.saveSettingsDebounced();
+            });
+
+            container.querySelector('#lba_layout_preset')?.addEventListener('change', event => {
+                const name = normalizeLayoutPreset(event.target.value);
+                settings().layoutPreset = name;
+                event.target.value = name;
+                applyLayoutPreset(name);
                 context.saveSettingsDebounced();
             });
 

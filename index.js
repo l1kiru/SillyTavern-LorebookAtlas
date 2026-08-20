@@ -20,7 +20,7 @@ import { formatBytes } from './src/util.js';
 import { createGallery } from './src/ui/gallery.js';
 import { createExplorer } from './src/ui/explorer.js';
 import { createRestorePreview } from './src/ui/restore-preview.js';
-import { createSettingsPanel } from './src/ui/settings.js';
+import { createSettingsPanel, applyLayoutPreset } from './src/ui/settings.js';
 import { createEntryButtons } from './src/ui/entry-button.js';
 import { createWiAdapter } from './src/ui/wi-adapter.js';
 import { createWiFilter } from './src/ui/wi-filter.js';
@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     bindingStrategy: STRATEGY.ENTRY,
     keepOriginal: true,
     previewMaxSide: 512,
+    layoutPreset: 'normal',
     includeSettingsInArchive: false,
     collapsedGroups: [],
 });
@@ -536,6 +537,7 @@ export function onActivate() {
     context.eventSource.on(context.event_types.APP_READY, async () => {
         try {
             const store = await getStorage();
+            applyLayoutPreset(settings().layoutPreset);
 
             gallery = createGallery({ storage: store, context, settings });
             settingsPanel = createSettingsPanel({
