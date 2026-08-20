@@ -40,6 +40,10 @@
     --lba-surface-active: rgba(127, 127, 127, 0.24);
     --lba-surface-active: color-mix(in srgb, currentColor 22%, transparent);
 
+    /* Solid enough for floating menus; ST's blur tint is the real panel colour. */
+    --lba-panel: rgba(32, 32, 32, 0.94);
+    --lba-panel: var(--SmartThemeBlurTintColor, rgba(32, 32, 32, 0.94));
+
     --lba-overlay: rgba(0, 0, 0, 0.5);
     --lba-overlay: var(--black50a, rgba(0, 0, 0, 0.5));
 
@@ -312,7 +316,7 @@
     padding: 6px;
     border: 1px solid var(--lba-border);
     border-radius: var(--lba-radius);
-    background: var(--lba-surface-active);
+    background: var(--lba-panel);
 }
 
 .lba-crop {
@@ -320,8 +324,11 @@
     inset: 0;
     z-index: 10050;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: safe center;
+    justify-content: safe center;
+    padding: 12px;
+    overflow: auto;
+    box-sizing: border-box;
     background: var(--lba-overlay);
 }
 
@@ -331,17 +338,22 @@
     gap: 8px;
     padding: 12px;
     min-width: min(280px, 90vw);
+    max-width: calc(100vw - 24px);
+    max-height: 100%;
+    overflow: auto;
     border: 1px solid var(--lba-border);
     border-radius: var(--lba-radius);
-    background: var(--lba-surface-active);
+    background: var(--lba-panel);
 }
 
 .lba-crop__preview {
     width: min(280px, 70vw);
+    max-width: 100%;
     aspect-ratio: 1;
     overflow: hidden;
     border-radius: var(--lba-radius);
     background: var(--lba-surface);
+    flex: 0 0 auto;
 }
 
 .lba-crop__preview img {
@@ -434,8 +446,9 @@
         --lba-collapsed-title-min: calc(1.25em + 6px);
         --lba-collapsed-title-max: calc(2.5em + 6px);
         display: grid;
-        grid-template-columns: auto auto auto minmax(0, 1fr);
+        grid-template-columns: auto auto minmax(0, var(--lba-collapsed-title-max)) minmax(0, 1fr);
         align-items: stretch;
+        column-gap: 6px;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .world_entry_thin_controls > .inline-drawer-toggle {
@@ -454,16 +467,19 @@
         grid-column: 3;
         align-self: stretch;
         align-items: stretch;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
         height: auto;
     }
 
     .world_entry.lba-entry-enhanced:not(:has(.inline-drawer-icon.up)) .menu_button.lba-entry-button {
         position: relative;
-        height: 100%;
-        width: auto;
-        min-width: var(--lba-collapsed-title-min);
+        width: 100%;
+        height: auto;
+        min-width: 0;
         min-height: var(--lba-collapsed-title-min);
-        max-width: var(--lba-collapsed-title-max);
+        max-width: 100%;
         max-height: var(--lba-collapsed-title-max);
         aspect-ratio: 1;
         overflow: hidden;
@@ -533,6 +549,10 @@
     .world_entry.lba-entry-enhanced:has(.inline-drawer-icon.up) .WIEnteryHeaderControls input {
         max-width: 100%;
         min-width: 0;
+    }
+
+    .lba-crop__preview {
+        width: min(52vw, 220px);
     }
 }
 

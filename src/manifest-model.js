@@ -192,6 +192,28 @@ export function imagesOfGroup(manifest, groupId) {
     return Object.values(manifest.images).filter(image => image.groupId === groupId);
 }
 
+/** SillyTavern uids are per-lorebook; a ref is only a match with both group and uid. */
+export function imageByRef(manifest, { groupId, entryUid } = {}) {
+    const gid = String(groupId || '');
+    const uid = String(entryUid ?? '');
+    if (!gid || !uid) return null;
+    for (const image of Object.values(manifest.images || {})) {
+        if ((image.refs || []).some(ref => String(ref.groupId) === gid && String(ref.entryUid) === uid)) {
+            return image;
+        }
+    }
+    return null;
+}
+
+export function groupIdForLorebook(manifest, lorebookName) {
+    const name = String(lorebookName || '');
+    if (!name) return '';
+    for (const group of Object.values(manifest.groups || {})) {
+        if (group.lorebookName === name) return group.id;
+    }
+    return '';
+}
+
 export function findImageBySha(manifest, sha256) {
     if (!sha256) return null;
     return Object.values(manifest.images).find(image => image.sha256 === sha256) || null;

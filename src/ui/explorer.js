@@ -14,6 +14,7 @@ import {
     LIST_KIND, distinctListedCount,
 } from '../lists.js';
 import { readEntryLists, writeEntryLists, addEntryToList, removeEntryFromList, entriesWithLists } from '../lorebook-binding.js';
+import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
 import { el, icon, clear, matches } from './dom.js';
 
 const ROOT = '__root__';
@@ -37,10 +38,10 @@ export function createExplorer({ storage, context, io }) {
 
     /** The image backing an entry, needed by the computed lists. */
     function imageFor(entryUid) {
-        for (const image of Object.values(storage.manifest.images || {})) {
-            if ((image.refs || []).some(ref => String(ref.entryUid) === String(entryUid))) return image;
-        }
-        return null;
+        return imageByRef(storage.manifest, {
+            groupId: groupIdForLorebook(storage.manifest, bookName),
+            entryUid,
+        });
     }
 
     function visibleEntries() {

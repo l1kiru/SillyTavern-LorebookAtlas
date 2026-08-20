@@ -88,6 +88,19 @@ test('totals count files, not just images', () => {
     assert.equal(t.locked, 1);
 });
 
+test('image lookup requires both group and uid, because uids collide across lorebooks', () => {
+    let m = model.createManifest();
+    m = model.upsertGroup(m, { id: 'ga', lorebookName: 'Book A' });
+    m = model.upsertGroup(m, { id: 'gb', lorebookName: 'Book B' });
+    m = model.upsertImage(m, { id: 'ia', groupId: 'ga', sha256: 'a', variants: { preview: 'pa' } });
+    m = model.addRef(m, 'ia', { groupId: 'ga', entryUid: 1 });
+
+    assert.equal(model.groupIdForLorebook(m, 'Book A'), 'ga');
+    assert.equal(model.imageByRef(m, { groupId: 'ga', entryUid: 1 })?.id, 'ia');
+    assert.equal(model.imageByRef(m, { groupId: 'gb', entryUid: 1 }), null);
+    assert.equal(model.imageByRef(m, { groupId: '', entryUid: 1 }), null);
+});
+
 test('adding an image to an unknown group is refused', () => {
     assert.throws(() => model.upsertImage(model.createManifest(), { id: 'x', groupId: 'ghost', variants: {} }), /Unknown group/);
 });

@@ -17,6 +17,7 @@ import { buildArchive, readArchive, estimateArchiveBytes } from './src/archive.j
 import { applyRestore } from './src/restore.js';
 import { reconstructMissingLists } from './src/lists.js';
 import { formatBytes } from './src/util.js';
+import { imageByRef, groupIdForLorebook } from './src/manifest-model.js';
 import { createGallery } from './src/ui/gallery.js';
 import { createExplorer } from './src/ui/explorer.js';
 import { createRestorePreview } from './src/ui/restore-preview.js';
@@ -613,8 +614,10 @@ export function onActivate() {
                             entries: entriesWithLists(book),
                         };
                     },
-                    imageForEntry: uid => Object.values(store.manifest.images)
-                        .find(image => (image.refs || []).some(ref => String(ref.entryUid) === String(uid))) ?? null,
+                    imageForEntry: uid => imageByRef(store.manifest, {
+                        groupId: groupIdForLorebook(store.manifest, wiAdapter().bookName()),
+                        entryUid: uid,
+                    }),
                 },
             });
 

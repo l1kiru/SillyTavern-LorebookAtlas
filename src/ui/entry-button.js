@@ -17,6 +17,7 @@ import { el, icon } from './dom.js';
 import { T } from '../i18n.js';
 import { createWiAdapter, bindInteractionBoundary } from './wi-adapter.js';
 import { CROP_DEFAULT, normalizeCrop, applyCropStyle } from '../lorebook-binding.js';
+import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
 
 const CHROME_CLASS = 'lba-entry-chrome';
 const MENU_CLASS = 'lba-thumb-menu';
@@ -55,10 +56,10 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
     let crops = Object.create(null);
 
     function imageFor(uid) {
-        for (const image of Object.values(storage.manifest.images || {})) {
-            if ((image.refs || []).some(ref => String(ref.entryUid) === String(uid))) return image;
-        }
-        return null;
+        return imageByRef(storage.manifest, {
+            groupId: groupIdForLorebook(storage.manifest, wi.bookName()),
+            entryUid: uid,
+        });
     }
 
     function cropFor(uid) {
@@ -155,16 +156,24 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
             }),
         ]);
         bindInteractionBoundary(menu);
+        document.body.append(menu);
         const rect = anchor.getBoundingClientRect();
-        menu.style.left = `${Math.round(rect.left)}px`;
-        menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+        const box = menu.getBoundingClientRect();
+        const pad = 8;
+        let left = rect.left;
+        let top = rect.bottom + 4;
+        if (left + box.width > window.innerWidth - pad) left = window.innerWidth - box.width - pad;
+        if (top + box.height > window.innerHeight - pad) top = rect.top - box.height - 4;
+        if (top < pad) top = pad;
+        if (left < pad) left = pad;
+        menu.style.left = `${Math.round(left)}px`;
+        menu.style.top = `${Math.round(top)}px`;
         const dismiss = event => {
             if (menu.contains(event.target)) return;
             closeLayer(MENU_CLASS);
         };
         menu._lbaDismiss = dismiss;
         document.addEventListener('pointerdown', dismiss, true);
-        document.body.append(menu);
     }
 
     function buildChrome(entryNode, uid) {
