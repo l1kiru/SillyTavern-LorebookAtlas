@@ -352,7 +352,8 @@ export function createExplorer({ storage, context, io }) {
                 ? el('i', {
                     class: 'fa-solid fa-xmark lba-chip__remove',
                     on: {
-                        click: async () => {
+                        click: async event => {
+                            event.stopPropagation();
                             removeEntryFromList(item.entry, listId);
                             await persist();
                             render();
