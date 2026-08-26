@@ -92,6 +92,7 @@ export function createExplorer({ storage, context, io }) {
         const groupId = await io.groupIdFor(bookName, book);
         await io.saveBook(bookName, book);
         if (groupId) await storage.setLists(groupId, lists);
+        io.onChanged?.();
     }
 
     // ---------------------------------------------------------------- tree

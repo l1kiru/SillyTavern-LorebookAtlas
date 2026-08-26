@@ -222,6 +222,7 @@ async function attachImageToEntry({ entryUid, bookName }) {
 
         entryButtons?.refresh();
         gallery?.refresh();
+        void wiFilter?.reload();
         notify(deduplicated ? T('entry.deduplicated') : T('entry.added'), 'success');
     } catch (error) {
         console.error(`[${MODULE_NAME}] failed to add image:`, error);
@@ -560,6 +561,15 @@ export function onActivate() {
                     /** Ensures the binding inside the explorer's own book object. */
                     groupIdFor: async (name, value) => (await ensureGroupFor(name, value)).groupId,
                     reconstruct: (lists, entries) => reconstructMissingLists(lists, entries),
+                    /**
+                     * Saving a lorebook does not emit WORLDINFO_UPDATED, so nothing else
+                     * learns that membership changed. Without this the World Info filter
+                     * keeps using the membership it read when it was opened.
+                     */
+                    onChanged: () => {
+                        void wiFilter?.reload();
+                        entryButtons?.refresh();
+                    },
                 },
             });
 
