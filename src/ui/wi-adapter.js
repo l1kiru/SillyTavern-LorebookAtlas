@@ -93,6 +93,42 @@ export function allMatching(root, selectors) {
     return result;
 }
 
+/**
+ * Re-reads the World Info editor from cache after we saved a lorebook.
+ *
+ * `loadWorldInfo` returns a deep clone (`worldInfoCache` is cloneOnGet). The editor keeps
+ * that clone and writes it back on the next keystroke in an entry. If we saved membership
+ * into a different clone, that keystroke would overwrite it — unless the editor is given
+ * a fresh copy first. SillyTavern's own slash commands do the same via `reloadEditor`.
+ *
+ * Prefer ST's `reloadEditor` when the caller can pass it. The fallback triggers `change`
+ * on the book select through jQuery, because ST binds that handler with `$().on`, and a
+ * native Event does not reach it.
+ *
+ * @returns {boolean} whether a reload was requested
+ */
+export function reloadOpenEditor(doc, bookName, { jquery, reloadEditor } = {}) {
+    if (!bookName) return false;
+
+    if (typeof reloadEditor === 'function') {
+        reloadEditor(bookName);
+        return true;
+    }
+
+    const select = firstMatching(firstMatching(doc, WI_SELECTORS.editorRoot) || doc, WI_SELECTORS.bookSelect)
+        || firstMatching(doc, WI_SELECTORS.bookSelect);
+    const open = select?.selectedOptions?.[0]?.textContent?.trim() ?? '';
+    if (!select || open !== bookName) return false;
+
+    if (typeof jquery === 'function') {
+        jquery(select).trigger('change');
+        return true;
+    }
+
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+}
+
 /** Pulls a uid out of visible text such as "UID: 12". */
 export function parseUidFromText(text) {
     const value = String(text || '');

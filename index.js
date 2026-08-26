@@ -25,7 +25,7 @@ import { createExplorer } from './src/ui/explorer.js';
 import { createRestorePreview } from './src/ui/restore-preview.js';
 import { createSettingsPanel, applyLayoutPreset } from './src/ui/settings.js';
 import { createEntryButtons } from './src/ui/entry-button.js';
-import { createWiAdapter } from './src/ui/wi-adapter.js';
+import { createWiAdapter, reloadOpenEditor } from './src/ui/wi-adapter.js';
 import { createWiFilter } from './src/ui/wi-filter.js';
 
 let sharedAdapter = null;
@@ -137,11 +137,22 @@ async function loadAllBooks({ force = false } = {}) {
     return books;
 }
 
-/** Saves a lorebook and drops it from the cache in one place, so the two cannot diverge. */
+/**
+ * Saves a lorebook and drops it from the cache in one place, so the two cannot diverge.
+ *
+ * `immediately` is required: without it ST debounce-cancels our write when the user types
+ * in an entry, and the editor's stale clone lands on disk instead. Reloading the open
+ * editor is required for the same reason — `loadWorldInfo` clones, the editor holds the
+ * clone, and the next content edit would overwrite list membership we just saved.
+ */
 async function saveBook(name, book) {
     const context = ctx();
-    await context.saveWorldInfo(name, book);
+    await context.saveWorldInfo(name, book, true);
     invalidateBookCache(name);
+    reloadOpenEditor(globalThis.document, name, {
+        reloadEditor: context.reloadEditor,
+        jquery: globalThis.$,
+    });
 }
 
 /** Brings the catalogue in line with World Info: renames, orphans, restorations. */

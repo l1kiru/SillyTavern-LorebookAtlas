@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { firstMatching, allMatching, parseUidFromText, WI_SELECTORS } from '../src/ui/wi-adapter.js';
+import { firstMatching, allMatching, parseUidFromText, WI_SELECTORS, reloadOpenEditor } from '../src/ui/wi-adapter.js';
 
 /** Minimal stand-in: answers only the selectors it was given. */
 function fakeRoot(map) {
@@ -63,4 +63,59 @@ test('the selector chains keep the historically working selector first', () => {
     for (const chain of Object.values(WI_SELECTORS)) {
         assert.ok(chain.length > 1, 'every lookup needs a fallback, not just one selector');
     }
+});
+
+function selectFor(openName) {
+    const option = { textContent: `  ${openName}  ` };
+    return {
+        selectedOptions: [option],
+        events: [],
+        dispatchEvent(event) {
+            this.events.push(event.type);
+            return true;
+        },
+    };
+}
+
+function docWithSelect(select) {
+    return fakeRoot({ '#world_editor_select': select });
+}
+
+test('reload prefers SillyTavern reloadEditor when it is provided', () => {
+    const seen = [];
+    const select = selectFor('Mine');
+    const ok = reloadOpenEditor(docWithSelect(select), 'Mine', {
+        reloadEditor: name => seen.push(name),
+        jquery: () => { throw new Error('jQuery must not be used when reloadEditor exists'); },
+    });
+    assert.equal(ok, true);
+    assert.deepEqual(seen, ['Mine']);
+    assert.deepEqual(select.events, []);
+});
+
+test('reload triggers the open book select through jQuery, not a native event', () => {
+    const select = selectFor('Mine');
+    const triggered = [];
+    const ok = reloadOpenEditor(docWithSelect(select), 'Mine', {
+        jquery: node => ({ trigger: type => triggered.push({ node, type }) }),
+    });
+    assert.equal(ok, true);
+    assert.deepEqual(triggered, [{ node: select, type: 'change' }]);
+    assert.deepEqual(select.events, [], 'ST binds the handler with $().on; a native Event would miss it');
+});
+
+test('reload is skipped when a different lorebook is open', () => {
+    const select = selectFor('Other');
+    const triggered = [];
+    const ok = reloadOpenEditor(docWithSelect(select), 'Mine', {
+        jquery: node => ({ trigger: type => triggered.push({ node, type }) }),
+    });
+    assert.equal(ok, false);
+    assert.deepEqual(triggered, []);
+});
+
+test('reload is skipped when there is no book name', () => {
+    assert.equal(reloadOpenEditor(docWithSelect(selectFor('Mine')), '', {
+        reloadEditor: () => { throw new Error('must not reload'); },
+    }), false);
 });
