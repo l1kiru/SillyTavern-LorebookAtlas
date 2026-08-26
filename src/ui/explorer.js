@@ -179,7 +179,6 @@ export function createExplorer({ storage, context, io }) {
         if (result !== context.POPUP_RESULT.AFFIRMATIVE) return;
 
         const cascade = Boolean(popup.inputResults?.get('lba_cascade'));
-        const removed = [list.id, ...(cascade ? Object.keys(lists).filter(id => id !== list.id && lists[id]) : [])];
         lists = removeList(lists, list.id, cascade ? 'cascade' : 'reparent');
 
         // Membership pointing at a list that no longer exists would linger invisibly.
@@ -187,9 +186,9 @@ export function createExplorer({ storage, context, io }) {
             const pruned = readEntryLists(item.entry).filter(id => lists[id] || isComputed(id));
             if (pruned.length !== item.lists.length) writeEntryLists(item.entry, pruned);
         }
-        void removed;
-
-        if (selected === list.id) selected = ROOT;
+        // A cascade takes descendants too, so the selection may now point at a list that
+        // no longer exists — after which "new list" would fail with "list not found".
+        if (selected !== ROOT && !isComputed(selected) && !lists[selected]) selected = ROOT;
         await persist();
         render();
     }
