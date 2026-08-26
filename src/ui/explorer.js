@@ -110,6 +110,9 @@ export function createExplorer({ storage, context, io }) {
                     dragging = { type: 'list', id: node.list.id };
                     event.stopPropagation();
                 },
+                // A drag abandoned outside any node never reaches handleDrop, so without
+                // this the stale source would be moved by the next drop on any node.
+                dragend: () => { dragging = null; },
                 dragover: event => { event.preventDefault(); row.classList.add('lba-node--drop'); },
                 dragleave: () => row.classList.remove('lba-node--drop'),
                 drop: async event => {
