@@ -54,6 +54,35 @@ export function createStorage({ api, onChange, onConflict } = {}) {
         return manifest;
     }
 
+    /**
+     * Undoes a half-finished upload.
+     *
+     * An image has more than one variant, so a failure can leave some files written and
+     * others not. Simply dropping the record would strand whatever did land: `/api/files`
+     * has no listing endpoint, and `verify()` only inspects files the manifest still names,
+     * so nothing could ever find them again.
+     *
+     * The files are therefore deleted first. If any deletion also fails, the record is kept
+     * on purpose — a record pointing at a missing file is visible to `verify()` and can be
+     * cleaned up, whereas an unreferenced file is lost for good. Keeping the worse-looking
+     * state is the recoverable one.
+     *
+     * @param {string} imageId
+     * @param {string[]} uploaded urls that were successfully written before the failure
+     */
+    async function unwindPartialUpload(imageId, uploaded) {
+        const results = await pool(uploaded, DEFAULTS.cleanupConcurrency, url => api.remove(url));
+        const stranded = results.filter(r => !r.ok).map(r => r.item);
+
+        if (stranded.length) {
+            console.error('[lorebook-atlas] could not remove files from a failed upload; '
+                + 'keeping the catalogue entry so verify() can still see them', stranded);
+            return;
+        }
+
+        await commit(model.removeImage(manifest, imageId));
+    }
+
     return {
         get manifest() {
             return manifest;
@@ -124,14 +153,14 @@ export function createStorage({ api, onChange, onConflict } = {}) {
             };
             await commit(model.upsertImage(manifest, record));
 
+            const uploaded = [];
             try {
                 for (const item of planned) {
                     await api.upload(item.name, await blobToBase64(item.payload.blob));
+                    uploaded.push(fileUrl(item.name));
                 }
             } catch (error) {
-                // Roll the record back so the catalogue does not advertise files that were
-                // never written. Anything that did land is swept by verify() later.
-                await commit(model.removeImage(manifest, imageId));
+                await unwindPartialUpload(imageId, uploaded);
                 throw error;
             }
 
@@ -197,12 +226,14 @@ export function createStorage({ api, onChange, onConflict } = {}) {
                 variants: Object.fromEntries(planned.map(p => [p.variant, fileUrl(p.name)])),
             }));
 
+            const uploaded = [];
             try {
                 for (const item of planned) {
                     await api.upload(item.name, bytesToBase64(item.bytes));
+                    uploaded.push(fileUrl(item.name));
                 }
             } catch (error) {
-                await commit(model.removeImage(manifest, imageId));
+                await unwindPartialUpload(imageId, uploaded);
                 throw error;
             }
 
