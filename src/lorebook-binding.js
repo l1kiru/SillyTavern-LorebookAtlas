@@ -62,6 +62,7 @@ export function clearGroupId(book) {
  * original's image group.
  */
 export function writeGroupId(book, groupId, strategy = STRATEGY.ENTRY) {
+    if (!strategy) strategy = STRATEGY.ENTRY;
     if (!book || typeof book !== 'object') throw new Error('Lorebook object expected');
     clearGroupId(book);
 
@@ -71,11 +72,23 @@ export function writeGroupId(book, groupId, strategy = STRATEGY.ENTRY) {
         return book;
     }
 
+    let written = 0;
     for (const entry of Object.values(book.entries || {})) {
         if (!entry || typeof entry !== 'object') continue;
         entry.extensions = entry.extensions || {};
         entry.extensions[BINDING_KEY] = { ...entry.extensions[BINDING_KEY], groupId };
+        written += 1;
     }
+
+    // A lorebook with no entries has nowhere to put a per-entry binding. Writing nothing
+    // while reporting success means readGroupId() returns null immediately afterwards, so
+    // every call mints a fresh id and the lists attached to the previous one are stranded.
+    // The book level is the only place left.
+    if (!written) {
+        book.extensions = book.extensions || {};
+        book.extensions[BINDING_KEY] = { ...book.extensions[BINDING_KEY], groupId };
+    }
+
     return book;
 }
 
