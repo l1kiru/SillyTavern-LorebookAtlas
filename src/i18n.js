@@ -177,6 +177,7 @@ export const STRINGS = Object.freeze({
     'restore.failed': 'Failed: {count}',
 
     // Errors
+    'storage.conflict': 'The image catalogue was changed in another tab; the newest change won.',
     'error.unknownGroup': 'Group not found: {id}',
     'error.unknownList': 'List not found: {id}',
     'error.listCycle': 'A list cannot be nested inside itself',

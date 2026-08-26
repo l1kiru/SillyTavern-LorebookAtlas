@@ -74,6 +74,12 @@ async function getStorage() {
     if (storage) return storage;
     storage = createStorage({
         api: api(),
+        onConflict: ({ ours, theirs }) => {
+            // Another tab wrote the catalogue after we loaded it. Last write still wins,
+            // but silently losing the other tab's work is the part worth avoiding.
+            console.warn(`[${MODULE_NAME}] catalogue was modified elsewhere (rev ${theirs} vs ours ${ours})`);
+            notify(T('storage.conflict'), 'warning');
+        },
         onChange: () => {
             settingsPanel?.refresh();
             entryButtons?.refresh();

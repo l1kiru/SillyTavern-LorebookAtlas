@@ -148,6 +148,7 @@
     "lba.restore.done": "Восстановлено: создано {created}, заменено {replaced}, слито {merged}, отдельно {separated}",
     "lba.restore.failed": "Не удалось: {count}",
 
+    "lba.storage.conflict": "Каталог изображений изменён в другой вкладке; победило последнее изменение.",
     "lba.error.unknownGroup": "Группа не найдена: {id}",
     "lba.error.unknownList": "Список не найден: {id}",
     "lba.error.listCycle": "Список нельзя вложить сам в себя",

@@ -17,16 +17,34 @@ import * as model from './manifest-model.js';
 import { uuid, pool } from './util.js';
 import { T } from './i18n.js';
 
-export function createStorage({ api, onChange } = {}) {
+export function createStorage({ api, onChange, onConflict } = {}) {
     let manifest = model.createManifest();
     let loaded = false;
 
+    /**
+     * The revision this session last saw on disk.
+     *
+     * `rev` advances on every mutation, which makes it a cheap way to notice that another
+     * tab wrote the catalogue underneath us. Without the check the later save silently
+     * discards the other tab's work; with it the loss is at least reported. Detection only:
+     * refusing the write would strand the edit the user just made.
+     */
+    let baseRev = 0;
+
     async function persist() {
         // Keep the previous revision alongside the current one. Cheap insurance against a
-        // torn write leaving no readable catalogue at all.
+        // torn write leaving no readable catalogue at all — and the same read tells us
+        // whether somebody else has written since we loaded.
         const previous = await api.readJson(fileUrl(MANIFEST_FILE));
+
+        const theirs = Number(previous?.rev);
+        if (Number.isFinite(theirs) && theirs > baseRev) {
+            onConflict?.({ ours: manifest.rev, theirs, base: baseRev });
+        }
+
         if (previous) await api.writeJson(MANIFEST_BAK_FILE, previous).catch(() => {});
         await api.writeJson(MANIFEST_FILE, manifest);
+        baseRev = manifest.rev;
         onChange?.(manifest);
     }
 
@@ -46,6 +64,7 @@ export function createStorage({ api, onChange } = {}) {
             const raw = await api.readJson(fileUrl(MANIFEST_FILE))
                 ?? await api.readJson(fileUrl(MANIFEST_BAK_FILE));
             manifest = model.normalizeManifest(raw);
+            baseRev = manifest.rev;
             loaded = true;
             onChange?.(manifest);
             return manifest;
@@ -230,6 +249,7 @@ export function createStorage({ api, onChange } = {}) {
             await api.writeJson(TOMBSTONE_FILE, tombstone);
             const result = await runCleanup(api, tombstone, { onProgress });
             manifest = model.createManifest();
+            baseRev = manifest.rev;
             onChange?.(manifest);
             return result;
         },
