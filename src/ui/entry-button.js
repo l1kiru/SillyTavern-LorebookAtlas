@@ -261,6 +261,11 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
     }
 
     async function runAttach(button, payload) {
+        // Belt and braces: even if something downstream hangs, a second click must not
+        // stack another spinner on the same button.
+        if (button.dataset.lbaBusy === '1') return;
+        button.dataset.lbaBusy = '1';
+
         button.classList.add('lba-entry-button--loading');
         button.setAttribute('aria-busy', 'true');
         const spin = icon('fa-solid fa-spinner fa-spin');
@@ -271,6 +276,7 @@ export function createEntryButtons({ storage, onAttach, onCrop, onOpen, onAfterS
             spin.remove();
             button.classList.remove('lba-entry-button--loading');
             button.removeAttribute('aria-busy');
+            delete button.dataset.lbaBusy;
         }
     }
 

@@ -19,6 +19,7 @@ import { reconstructMissingLists } from './src/lists.js';
 import { formatBytes, debounce } from './src/util.js';
 import { imageByRef, groupIdForLorebook } from './src/manifest-model.js';
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION, normalizeSettings } from './src/settings-schema.js';
+import { pickFile } from './src/ui/dom.js';
 import { createGallery } from './src/ui/gallery.js';
 import { createExplorer } from './src/ui/explorer.js';
 import { createRestorePreview } from './src/ui/restore-preview.js';
@@ -160,16 +161,6 @@ export async function groupForLorebook(bookName) {
     const store = await getStorage();
     await store.ensureGroup(groupId, bookName);
     return groupId;
-}
-
-function pickFile() {
-    return new Promise(resolve => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
-        input.click();
-    });
 }
 
 /** Full attach flow: pick a file, store it in the lorebook's group, bind it to the entry. */
@@ -319,7 +310,7 @@ export async function importArchive() {
     const context = ctx();
     const store = await getStorage();
 
-    const file = await pickArchiveFile();
+    const file = await pickFile({ accept: '.zip,application/zip' });
     if (!file) return null;
 
     let archive;
@@ -362,16 +353,6 @@ export async function importArchive() {
     await syncGroups();
     gallery?.refresh();
     return report;
-}
-
-function pickArchiveFile() {
-    return new Promise(resolve => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.zip,application/zip';
-        input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
-        input.click();
-    });
 }
 
 // ---------------------------------------------------------------------------
