@@ -80,9 +80,17 @@ export function createExplorer({ storage, context, io }) {
         ));
     }
 
+    /**
+     * One book object, one save, in that order.
+     *
+     * Ensuring the group id *after* saving used to write the binding into a different copy
+     * of the lorebook: the next save here wrote our stale object back over it, the id was
+     * lost, and the call after that minted a new one — stranding every list created so far
+     * under a group nothing pointed at any more.
+     */
     async function persist() {
+        const groupId = await io.groupIdFor(bookName, book);
         await io.saveBook(bookName, book);
-        const groupId = await io.groupIdFor(bookName);
         if (groupId) await storage.setLists(groupId, lists);
     }
 
@@ -409,11 +417,15 @@ export function createExplorer({ storage, context, io }) {
             }
 
             book = await io.loadBook(bookName);
-            const groupId = await io.groupIdFor(bookName);
+            // Same object throughout: the id is written into `book`, not into a second copy.
+            const groupId = await io.groupIdFor(bookName, book);
             lists = groupId ? { ...storage.listsOf(groupId) } : {};
 
             // A lorebook can arrive carrying membership but no definitions.
+            const before = Object.keys(lists).length;
             lists = io.reconstruct(lists, entries());
+            // Placeholders would otherwise live only in memory and vanish on close.
+            if (Object.keys(lists).length !== before) await persist();
 
             selected = ROOT;
             search = '';

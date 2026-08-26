@@ -158,14 +158,34 @@ async function syncGroups() {
     return changes;
 }
 
-/** Returns or creates the group bound to a lorebook, writing the UUID into the book. */
-export async function groupForLorebook(bookName) {
-    const book = await loadBookCached(bookName, { force: true });
-    const { groupId, created } = ensureGroupId(book, settings().bindingStrategy);
-    if (created) await saveBook(bookName, book);
+/**
+ * Ensures a lorebook carries a group id, writing it into the object the caller is holding.
+ *
+ * Taking the book as a parameter is the point. Loading a second copy here and saving it
+ * separately left the caller mutating a stale object: its next save wrote a book with no
+ * binding, the id was lost, and the following call minted a different one — so every list
+ * ended up under a fresh group and the previous group was orphaned.
+ *
+ * Saving is left to the caller so the whole edit lands in one write.
+ *
+ * @param {string} bookName
+ * @param {object} [book] the caller's object; loaded fresh only when omitted
+ * @returns {Promise<{ groupId: string, created: boolean, book: object }>}
+ */
+export async function ensureGroupFor(bookName, book = null) {
+    const target = book ?? await loadBookCached(bookName, { force: true });
+    if (!target) throw new Error(`Lorebook could not be read: ${bookName}`);
 
+    const { groupId, created } = ensureGroupId(target, settings().bindingStrategy);
     const store = await getStorage();
     await store.ensureGroup(groupId, bookName);
+    return { groupId, created, book: target };
+}
+
+/** Convenience wrapper for callers with no book in hand; saves if it had to create one. */
+export async function groupForLorebook(bookName) {
+    const { groupId, created, book } = await ensureGroupFor(bookName);
+    if (created) await saveBook(bookName, book);
     return groupId;
 }
 
@@ -181,7 +201,8 @@ async function attachImageToEntry({ entryUid, bookName }) {
 
     try {
         const store = await getStorage();
-        const groupId = await groupForLorebook(bookName);
+        // One object, one save: ensure the binding in the same book the entry is written to.
+        const { groupId, book } = await ensureGroupFor(bookName);
 
         const { image, deduplicated } = await store.putImage(groupId, file, {
             originalName: file.name,
@@ -191,13 +212,13 @@ async function attachImageToEntry({ entryUid, bookName }) {
         });
 
         // The binding also goes into the entry itself, so it travels with a lorebook export.
-        const book = await loadBookCached(bookName, { force: true });
         const entry = Object.values(book.entries || {}).find(e => String(e.uid) === String(entryUid));
-        if (entry) {
-            writeEntryImage(entry, image);
-            await saveBook(bookName, book);
-            entryButtons?.setCrop(entryUid, readEntryCrop(entry));
-        }
+        if (entry) writeEntryImage(entry, image);
+
+        // Saved unconditionally: ensureGroupFor may have just written a group id into this
+        // object, and skipping the save when the entry is missing would discard it.
+        await saveBook(bookName, book);
+        if (entry) entryButtons?.setCrop(entryUid, readEntryCrop(entry));
 
         entryButtons?.refresh();
         gallery?.refresh();
@@ -536,7 +557,8 @@ export function onActivate() {
                     currentBookName,
                     loadBook: name => loadBookCached(name, { force: true }),
                     saveBook: (name, value) => saveBook(name, value),
-                    groupIdFor: name => groupForLorebook(name),
+                    /** Ensures the binding inside the explorer's own book object. */
+                    groupIdFor: async (name, value) => (await ensureGroupFor(name, value)).groupId,
                     reconstruct: (lists, entries) => reconstructMissingLists(lists, entries),
                 },
             });
