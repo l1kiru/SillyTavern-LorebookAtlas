@@ -18,6 +18,7 @@ import { applyRestore } from './src/restore.js';
 import { reconstructMissingLists } from './src/lists.js';
 import { formatBytes, debounce } from './src/util.js';
 import { imageByRef, groupIdForLorebook } from './src/manifest-model.js';
+import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION, normalizeSettings } from './src/settings-schema.js';
 import { createGallery } from './src/ui/gallery.js';
 import { createExplorer } from './src/ui/explorer.js';
 import { createRestorePreview } from './src/ui/restore-preview.js';
@@ -30,49 +31,6 @@ let sharedAdapter = null;
 function wiAdapter() {
     if (!sharedAdapter) sharedAdapter = createWiAdapter();
     return sharedAdapter;
-}
-
-/**
- * Bumped whenever the stored shape changes.
- *
- * There is nothing to migrate yet — this is the first released schema. The machinery is
- * here from the start because without a version there is no way to repair a bad default
- * once it has been written into every user's settings.json.
- */
-const SETTINGS_SCHEMA_VERSION = 1;
-
-const DEFAULT_SETTINGS = Object.freeze({
-    schemaVersion: SETTINGS_SCHEMA_VERSION,
-    enabled: true,
-    bindingStrategy: STRATEGY.ENTRY,
-    keepOriginal: true,
-    previewMaxSide: 512,
-    layoutPreset: 'normal',
-    includeSettingsInArchive: false,
-    collapsedGroups: [],
-});
-
-/**
- * Upgrade steps, keyed by the version each one upgrades *from*, so a user several versions
- * behind runs them all in order. Empty until the first breaking change.
- */
-const SETTINGS_MIGRATIONS = Object.freeze({});
-
-function migrateSettings(stored) {
-    let version = Number(stored.schemaVersion) || 0;
-    while (version < SETTINGS_SCHEMA_VERSION) {
-        const step = SETTINGS_MIGRATIONS[version];
-        if (step) {
-            try {
-                step(stored);
-            } catch (error) {
-                console.error(`[${MODULE_NAME}] settings migration ${version} failed:`, error);
-            }
-        }
-        version += 1;
-    }
-    stored.schemaVersion = SETTINGS_SCHEMA_VERSION;
-    return stored;
 }
 
 let storage = null;
@@ -101,17 +59,13 @@ function notify(message, type = 'info') {
 function settings() {
     const context = ctx();
     if (!context) return { ...DEFAULT_SETTINGS };
+
     const bag = context.extensionSettings;
     if (!bag[MODULE_NAME]) bag[MODULE_NAME] = structuredClone(DEFAULT_SETTINGS);
 
-    const stored = bag[MODULE_NAME];
-    for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
-        if (!Object.hasOwn(stored, key)) stored[key] = value;
-    }
-    if (Number(stored.schemaVersion) !== SETTINGS_SCHEMA_VERSION) {
-        migrateSettings(stored);
-        context.saveSettingsDebounced?.();
-    }
+    const before = bag[MODULE_NAME].schemaVersion;
+    const stored = normalizeSettings(bag[MODULE_NAME]);
+    if (before !== SETTINGS_SCHEMA_VERSION) context.saveSettingsDebounced?.();
     return stored;
 }
 
