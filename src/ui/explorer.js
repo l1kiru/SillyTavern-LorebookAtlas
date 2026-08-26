@@ -13,7 +13,7 @@ import {
     setParent, computedDefinitions, computedListsFor, isComputed, COMPUTED_LISTS,
     LIST_KIND, distinctListedCount,
 } from '../lists.js';
-import { readEntryLists, writeEntryLists, addEntryToList, removeEntryFromList, entriesWithLists, readEntryCrop, applyCropStyle } from '../lorebook-binding.js';
+import { readEntryLists, writeEntryLists, addEntryToList, removeEntryFromList, applyMembershipSelection, entriesWithLists, readEntryCrop, applyCropStyle } from '../lorebook-binding.js';
 import { imageByRef, groupIdForLorebook } from '../manifest-model.js';
 import { debounce } from '../util.js';
 import { el, icon, clear, matches } from './dom.js';
@@ -280,7 +280,11 @@ export function createExplorer({ storage, context, io }) {
         const answer = await context.callGenericPopup(body, context.POPUP_TYPE.CONFIRM);
         if (answer !== context.POPUP_RESULT.AFFIRMATIVE) return;
 
-        writeEntryLists(item.entry, boxes.filter(box => box.checked).map(box => box.dataset.listId));
+        writeEntryLists(item.entry, applyMembershipSelection(
+            readEntryLists(item.entry),
+            boxes.map(box => box.dataset.listId),
+            boxes.filter(box => box.checked).map(box => box.dataset.listId),
+        ));
         await persist();
         render();
     }

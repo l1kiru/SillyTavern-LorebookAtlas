@@ -203,6 +203,24 @@ export function writeEntryLists(entry, listIds) {
     return entry;
 }
 
+/**
+ * Applies a checkbox selection to an entry's membership.
+ *
+ * Only the lists that were actually offered can be judged. Writing the checkbox state
+ * wholesale would drop any other id the entry carries — an id whose definition did not
+ * travel with the lorebook, for instance — so those are carried over untouched.
+ *
+ * @param {string[]} current membership as it stands
+ * @param {string[]} offered list ids the dialog showed a checkbox for
+ * @param {string[]} checked list ids the user ticked
+ * @returns {string[]} the membership to store
+ */
+export function applyMembershipSelection(current, offered, checked) {
+    const wasOffered = new Set(offered ?? []);
+    const untouched = (current ?? []).filter(id => !wasOffered.has(id));
+    return [...new Set([...(checked ?? []), ...untouched])];
+}
+
 export function addEntryToList(entry, listId) {
     return writeEntryLists(entry, [...readEntryLists(entry), listId]);
 }

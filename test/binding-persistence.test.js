@@ -90,3 +90,33 @@ test('the binding lands in the object it was handed, not a copy', () => {
     assert.notEqual(JSON.stringify(book), snapshot, 'the caller\'s object must be the one mutated');
     assert.equal(readGroupId(JSON.parse(JSON.stringify(book))), groupId, 'and it must survive serialisation');
 });
+
+// ---------------------------------------------------------------- membership editing
+
+test('ticking boxes replaces only the lists that were offered', async () => {
+    const { applyMembershipSelection } = await import('../src/lorebook-binding.js');
+
+    const result = applyMembershipSelection(['a', 'b'], ['a', 'b', 'c'], ['b', 'c']);
+    assert.deepEqual(result.sort(), ['b', 'c'], 'unticking an offered list removes it');
+});
+
+test('membership the dialog could not show is carried over, not dropped', async () => {
+    const { applyMembershipSelection } = await import('../src/lorebook-binding.js');
+
+    // 'ghost' has no definition locally, so no checkbox was rendered for it. Writing the
+    // checkbox state wholesale would erase it from a lorebook that came from elsewhere.
+    const result = applyMembershipSelection(['a', 'ghost'], ['a', 'b'], ['b']);
+    assert.deepEqual(result.sort(), ['b', 'ghost']);
+});
+
+test('clearing every box leaves only the untouchable ids', async () => {
+    const { applyMembershipSelection } = await import('../src/lorebook-binding.js');
+
+    assert.deepEqual(applyMembershipSelection(['a', 'ghost'], ['a'], []), ['ghost']);
+    assert.deepEqual(applyMembershipSelection(['a'], ['a'], []), []);
+});
+
+test('the result has no duplicates', async () => {
+    const { applyMembershipSelection } = await import('../src/lorebook-binding.js');
+    assert.deepEqual(applyMembershipSelection(['a'], ['a'], ['a', 'a']), ['a']);
+});
