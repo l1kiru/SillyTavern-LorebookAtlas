@@ -205,7 +205,18 @@ export function createStorage({ api, onChange, onConflict } = {}) {
             if (!manifest.groups[record.groupId]) throw new Error(T('error.unknownGroup', { id: record.groupId }));
 
             const duplicate = model.findImageBySha(manifest, record.sha256);
-            if (duplicate) return { image: duplicate, deduplicated: true };
+            if (duplicate) {
+                // The references the archive carried have to be folded in, not dropped.
+                // Without them the file looks like it belongs to one lorebook, and deleting
+                // that lorebook takes the picture away from every other one sharing it —
+                // planGroupDeletion can only spare what it can see is shared.
+                let next = manifest;
+                for (const ref of record.refs ?? []) {
+                    next = model.addRef(next, duplicate.id, ref);
+                }
+                if (next !== manifest) await commit(next);
+                return { image: manifest.images[duplicate.id], deduplicated: true };
+            }
 
             const imageId = record.id || uuid();
             const planned = Object.entries(bytesByVariant).map(([variant, bytes]) => ({
