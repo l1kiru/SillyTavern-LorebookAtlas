@@ -17,8 +17,17 @@ import { FILE_PREFIX, SAFE_FILENAME_RE, VARIANT_CODE, CODE_VARIANT, MIME_EXT, FI
 
 const SHORT = 8;
 
+/**
+ * Fixed-width segment of an identifier.
+ *
+ * Padding matters: parseFileName expects exactly SHORT characters, so a shorter id would
+ * produce a name the parser does not recognise as ours — and an unrecognised file is one
+ * cleanup skips and verify() cannot see. Ids are normally uuids, but an archive can carry
+ * whatever was written into it, so the two functions must agree for any input.
+ */
 function shortId(value) {
-    return String(value || '').replace(/-/g, '').slice(0, SHORT).toLowerCase();
+    const normalized = String(value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+    return normalized.slice(0, SHORT).padEnd(SHORT, '0');
 }
 
 /**
@@ -37,10 +46,15 @@ export function buildFileName({ groupId, imageId, variant, sha256, mime }) {
     const ext = MIME_EXT[mime];
     if (!ext) throw new Error(`Unsupported mime: ${mime}`);
 
+    // Validated before padding: an empty id would otherwise become a run of zeroes and
+    // collide with every other image whose id was also missing.
+    if (!String(groupId || '').trim() || !String(imageId || '').trim() || !String(sha256 || '').trim()) {
+        throw new Error('groupId, imageId and sha256 are all required');
+    }
+
     const group = shortId(groupId);
     const image = shortId(imageId);
     const sha = shortId(sha256);
-    if (!group || !image || !sha) throw new Error('groupId, imageId and sha256 are all required');
 
     const name = `${FILE_PREFIX}_${group}_${image}_${code}_${sha}.${ext}`;
     if (!SAFE_FILENAME_RE.test(name)) throw new Error(`Generated name rejected by the safe pattern: ${name}`);

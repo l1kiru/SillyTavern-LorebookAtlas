@@ -52,3 +52,24 @@ test('unsupported inputs are rejected loudly', () => {
     assert.throws(() => buildFileName({ groupId: GROUP, imageId: IMAGE, variant: VARIANT.PREVIEW, sha256: SHA, mime: 'image/heic' }), /mime/i);
     assert.throws(() => buildFileName({ groupId: '', imageId: IMAGE, variant: VARIANT.PREVIEW, sha256: SHA, mime: 'image/webp' }), /required/i);
 });
+
+test('a generated name always parses back, whatever the ids look like', () => {
+    // Ids are normally uuids, but an archive carries whatever was written into it. A name
+    // the parser does not recognise is a file cleanup skips and verify() cannot see.
+    const cases = [
+        { groupId: 'g1', imageId: 'i', sha256: 'ab' },
+        { groupId: GROUP, imageId: IMAGE, sha256: SHA },
+        { groupId: 'A3F1-B2C4', imageId: '00', sha256: 'ZZ' },
+    ];
+
+    for (const ids of cases) {
+        const name = buildFileName({ ...ids, variant: VARIANT.PREVIEW, mime: 'image/webp' });
+        assert.ok(parseFileName(name), `unparseable: ${name}`);
+        assert.match(name, SAFE_FILENAME_RE);
+    }
+});
+
+test('distinct ids stay distinct after padding', () => {
+    const make = groupId => buildFileName({ groupId, imageId: IMAGE, variant: VARIANT.PREVIEW, sha256: SHA, mime: 'image/webp' });
+    assert.notEqual(make('a1'), make('a2'));
+});
