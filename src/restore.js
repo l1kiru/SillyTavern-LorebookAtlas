@@ -253,8 +253,12 @@ export function mergeListDefinitions(localLists, item, now = new Date()) {
  * @param {(groupId: string, lists: object) => Promise<void>} io.setLists
  * @param {(record: object, bytes: Record<string, Uint8Array>) => Promise<void>} io.putImage
  * @param {(groupId: string) => Promise<void>} [io.deleteGroup]
+ * @param {object} [options]
+ * @param {string} [options.bindingStrategy] where to write the group id; defaults to the
+ *        safe per-entry layout. Passing it through means a restore does not quietly move
+ *        the binding to the other location and override what the user chose.
  */
-export async function applyRestore(plan, archive, io, { onProgress } = {}) {
+export async function applyRestore(plan, archive, io, { onProgress, bindingStrategy } = {}) {
     const report = { created: [], replaced: [], merged: [], separated: [], skipped: [], failed: [] };
     const done = { n: 0 };
     const total = plan.items.filter(item => !item.skip).length;
@@ -277,14 +281,14 @@ export async function applyRestore(plan, archive, io, { onProgress } = {}) {
                 case POLICY.CREATE:
                 case POLICY.SEPARATE: {
                     book = structuredClone(incoming.book);
-                    if (groupId) writeGroupId(book, groupId);
+                    if (groupId) writeGroupId(book, groupId, bindingStrategy);
                     // A separate copy must not keep pointing at the original group.
                     if (item.newGroupId) book = remapEntryImages(book);
                     break;
                 }
                 case POLICY.REPLACE: {
                     book = structuredClone(incoming.book);
-                    if (groupId) writeGroupId(book, groupId);
+                    if (groupId) writeGroupId(book, groupId, bindingStrategy);
                     if (io.deleteGroup && item.groupId) await io.deleteGroup(item.groupId);
                     break;
                 }
@@ -292,7 +296,7 @@ export async function applyRestore(plan, archive, io, { onProgress } = {}) {
                     const local = await io.loadBook(item.name);
                     book = mergeBooks(local ?? { entries: {} }, incoming.book, item);
                     const existingGroupId = readGroupId(local ?? {}) || groupId;
-                    if (existingGroupId) writeGroupId(book, existingGroupId);
+                    if (existingGroupId) writeGroupId(book, existingGroupId, bindingStrategy);
                     lists = mergeListDefinitions(await io.loadLists?.(existingGroupId), item);
                     break;
                 }

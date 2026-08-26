@@ -335,7 +335,7 @@ export async function importArchive() {
             setLists: async (groupId, lists) => { await store.setLists(groupId, lists); },
             putImage: async (record, bytes) => { await store.putImageFromArchive(record, bytes); },
             deleteGroup: async groupId => { await store.deleteGroup(groupId).catch(() => {}); },
-        }),
+        }, { bindingStrategy: settings().bindingStrategy }),
     });
 
     const report = await preview.show();
